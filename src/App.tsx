@@ -4,8 +4,10 @@ import WelcomeScreen from './components/WelcomeScreen';
 import PlanForm from './components/PlanForm';
 import AIPanel from './components/AIPanel';
 import SuccessScreen from './components/SuccessScreen';
+import LoginScreen from './components/LoginScreen';
+import AdminDashboard from './components/AdminDashboard';
 
-export type AppState = 'splash' | 'welcome' | 'form' | 'success';
+export type AppState = 'splash' | 'login' | 'admin' | 'welcome' | 'form' | 'success';
 
 export interface PlanData {
   area: string;
@@ -18,12 +20,31 @@ export interface PlanData {
 function App() {
   const [appState, setAppState] = useState<AppState>('splash');
   const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [_userRole, setUserRole] = useState<string | null>(null);
+
+  const handleLoginSuccess = (roles: string) => {
+    setUserRole(roles);
+    if (roles.toLowerCase() === 'admin') {
+      setAppState('admin');
+    } else {
+      setAppState('welcome');
+    }
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    setAppState('login');
+  };
 
   return (
     <div className="min-h-screen print:min-h-0 print:block bg-[radial-gradient(circle_at_center,_#2e1065_0%,_#050505_60%,_#000000_100%)] print:bg-none print:bg-white text-white print:text-black flex flex-col font-sans font-light relative">
-      {appState === 'splash' && <SplashScreen onComplete={() => setAppState('welcome')} />}
+      {appState === 'splash' && <SplashScreen onComplete={() => setAppState('login')} />}
       
-      {appState !== 'splash' && (
+      {appState === 'login' && <LoginScreen onLoginSuccess={handleLoginSuccess} />}
+      
+      {appState === 'admin' && <AdminDashboard onLogout={handleLogout} />}
+      
+      {(appState !== 'splash' && appState !== 'login' && appState !== 'admin') && (
         <div className="flex flex-1 overflow-hidden print:overflow-visible print:block relative">
           {/* Main Content Area */}
           <main className="flex-1 overflow-y-auto print:overflow-visible p-4 md:p-12 print:p-0 relative z-10 w-full h-screen print:h-auto">
