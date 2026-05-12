@@ -2,72 +2,75 @@ import { useState } from 'react';
 import SplashScreen from './components/SplashScreen';
 import WelcomeScreen from './components/WelcomeScreen';
 import PlanForm from './components/PlanForm';
-import AIPanel from './components/AIPanel';
 import SuccessScreen from './components/SuccessScreen';
-import LoginScreen from './components/LoginScreen';
-import AdminDashboard from './components/AdminDashboard';
 
-export type AppState = 'splash' | 'login' | 'admin' | 'welcome' | 'form' | 'success';
+export type AppState = 'splash' | 'welcome' | 'form' | 'success';
 
 export interface PlanData {
-  area: string;
-  objetivo: string;
-  problematica: string;
-  acciones: string;
-  descripcion: string;
+  frentePDI: string;
+  nivel1: string;
+  nivel2: string;
+  prioridad: string;
+  vicerrectoria: string;
+  areaPrograma: string;
+  cargoResponsable: string;
+  iniciativa: string;
+  accionMejora: string;
+  meta: string;
+  actividad: string;
+  fechaInicio: string;
+  fechaCierre: string;
+  avance: string;
+  evidencia: string;
 }
 
 function App() {
   const [appState, setAppState] = useState<AppState>('splash');
   const [planData, setPlanData] = useState<PlanData | null>(null);
-  const [_userRole, setUserRole] = useState<string | null>(null);
-
-  const handleLoginSuccess = (roles: string) => {
-    setUserRole(roles);
-    if (roles.toLowerCase() === 'admin') {
-      setAppState('admin');
-    } else {
-      setAppState('welcome');
-    }
-  };
-
-  const handleLogout = () => {
-    setUserRole(null);
-    setAppState('login');
-  };
 
   return (
-    <div className="min-h-screen print:min-h-0 print:block bg-[radial-gradient(circle_at_center,_#2e1065_0%,_#050505_60%,_#000000_100%)] print:bg-none print:bg-white text-white print:text-black flex flex-col font-sans font-light relative">
-      {appState === 'splash' && <SplashScreen onComplete={() => setAppState('login')} />}
-      
-      {appState === 'login' && <LoginScreen onLoginSuccess={handleLoginSuccess} />}
-      
-      {appState === 'admin' && <AdminDashboard onLogout={handleLogout} />}
-      
-      {(appState !== 'splash' && appState !== 'login' && appState !== 'admin') && (
-        <div className="flex flex-1 overflow-hidden print:overflow-visible print:block relative">
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-y-auto print:overflow-visible p-4 md:p-12 print:p-0 relative z-10 w-full h-screen print:h-auto">
-            <div className="max-w-4xl mx-auto h-full print:h-auto flex flex-col print:block">
-              {appState === 'welcome' && <WelcomeScreen onStart={() => setAppState('form')} />}
-              {appState === 'form' && <PlanForm onSubmit={(data) => {
-                setPlanData(data);
-                setAppState('success');
-              }} />}
-              {appState === 'success' && planData && <SuccessScreen data={planData} onBack={() => {
-                setAppState('welcome');
-                setPlanData(null);
-              }} />}
-            </div>
-          </main>
-          
-          {/* Right Panel: AI Suggestions */}
-          {(appState === 'welcome' || appState === 'form') && (
-            <div className="print:hidden h-full">
-              <AIPanel />
-            </div>
-          )}
+    <div className="min-h-screen print:min-h-0 print:block print:bg-white text-white print:text-black flex flex-col font-sans font-light relative"
+      style={{ backgroundColor: '#0d1f29' }}>
+
+      {appState === 'splash' && (
+        <SplashScreen onComplete={() => setAppState('welcome')} />
+      )}
+
+      {/* Welcome: sin padding, ocupa toda la pantalla */}
+      {appState === 'welcome' && (
+        <div className="flex-1 w-full min-h-screen">
+          <WelcomeScreen onStart={() => setAppState('form')} />
         </div>
+      )}
+
+      {/* Form y Success: con padding y ancho limitado */}
+      {(appState === 'form' || appState === 'success') && (
+        <main className="flex-1 overflow-y-auto p-4 md:p-12 print:p-0 w-full min-h-screen print:min-h-0">
+          <div className="max-w-3xl mx-auto print:max-w-none">
+
+            {appState === 'form' && (
+              <PlanForm
+                initialData={planData}
+                onGoHome={() => { setPlanData(null); setAppState('welcome'); }}
+                onSubmit={(data) => {
+                  setPlanData(data);
+                  setAppState('success');
+                }}
+              />
+            )}
+
+            {appState === 'success' && planData && (
+              <SuccessScreen
+                data={planData}
+                onBack={() => setAppState('form')}
+                onNew={() => {
+                  setPlanData(null);
+                  setAppState('form');
+                }}
+              />
+            )}
+          </div>
+        </main>
       )}
     </div>
   );
