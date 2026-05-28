@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import type { PlanData } from '../App';
 
 interface PlanFormProps {
@@ -61,11 +61,11 @@ const STEPS = [
   { id: 'pdi',        label: 'Identificación PDI',  emoji: '🎯' },
   { id: 'unidad',     label: 'Unidad Responsable',   emoji: '🏛️' },
   { id: 'accion',     label: 'Acción de mejora',     emoji: '✦ IA' },
-  { id: 'meta',       label: 'Meta',                 emoji: '✦ IA' },
+  { id: 'meta',       label: 'Meta',                 emoji: '📌' },
   { id: 'actividad',  label: 'Actividad',             emoji: '✦ IA' },
   { id: 'cronograma', label: 'Cronograma',            emoji: '📅' },
-  { id: 'avance',     label: 'Avance',                emoji: '✦ IA' },
-  { id: 'evidencia',  label: 'Evidencia',             emoji: '✦ IA' },
+  { id: 'avance',     label: 'Avance',                emoji: '📈' },
+  { id: 'evidencia',  label: 'Evidencia',             emoji: '📎' },
 ];
 
 const slideVariants = {
@@ -75,12 +75,14 @@ const slideVariants = {
 };
 
 export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormProps) {
-  const [step, setStep]       = useState(0);
-  const [direction, setDir]   = useState(1);
+  const [step, setStep]         = useState(0);
+  const [direction, setDir]     = useState(1);
   const [formData, setFormData] = useState<PlanData>(initialData ?? EMPTY_FORM);
-  const [aiStatus, setAiStatus]         = useState<Record<string, AIStatus>>({});
-  const [aiSuggestions, setAiSugg]      = useState<Record<string, string>>({});
-  const [aiAccepted, setAiAccepted]     = useState<Record<string, boolean>>({});
+
+  // AI state solo para los campos con IA: accionMejora y actividad
+  const [aiStatus, setAiStatus]       = useState<Record<string, AIStatus>>({});
+  const [aiSuggestions, setAiSugg]    = useState<Record<string, string>>({});
+  const [aiAccepted, setAiAccepted]   = useState<Record<string, boolean>>({});
 
   const totalSteps = STEPS.length;
   const progress   = ((step) / (totalSteps - 1)) * 100;
@@ -102,10 +104,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     await new Promise(r => setTimeout(r, 1800));
     const mock: Record<string, string> = {
       accionMejora: `Reformular como: "${val}" — alineada con "${formData.frentePDI || 'el frente PDI'}", con indicadores medibles y responsables definidos.`,
-      meta:         `Cuantifica la meta: "Incrementar en un 20% ${val.toLowerCase()} al finalizar el período académico."`,
       actividad:    `Desagrega en hitos trimestrales con responsable asignado: "${val}" — hitos T1, T2, T3.`,
-      avance:       `Incluye: porcentaje completado, obstáculos y próxima acción. Ej: "${val} — 45% completado."`,
-      evidencia:    `Adjunta: actas firmadas, registros o informes PDF con firma digital. Campo: "${val}".`,
     };
     setAiSugg(p => ({ ...p, [field]: mock[field] ?? `Sugerencia: "${val}" es adecuado. Agrega más contexto institucional.` }));
     setAiStatus(p => ({ ...p, [field]: 'done' }));
@@ -160,13 +159,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
           desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional."
         />
         <SelectField label="Frente PDI relacionado" value={formData.frentePDI} options={FRENTE_PDI}
-          onChange={v => set('frentePDI', v)} cls={selectCls} />
+          onChange={v => set('frentePDI', v)} />
         <SelectField label="Nivel 1 de particularización" value={formData.nivel1} options={NIVEL1}
-          onChange={v => set('nivel1', v)} cls={selectCls} />
+          onChange={v => set('nivel1', v)} />
         <SelectField label="Nivel 2 de particularización" value={formData.nivel2} options={NIVEL2}
-          onChange={v => set('nivel2', v)} cls={selectCls} />
+          onChange={v => set('nivel2', v)} />
         <SelectField label="Prioridad / Nivel de riesgo" value={formData.prioridad} options={PRIORIDADES}
-          onChange={v => set('prioridad', v)} cls={selectCls} />
+          onChange={v => set('prioridad', v)} />
       </div>
     );
 
@@ -175,7 +174,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🏛️" title="Unidad Responsable" desc="Define quién lidera y ejecuta este plan de mejora." />
         <SelectField label="Vicerrectoría / Facultad" value={formData.vicerrectoria} options={VICERRECTORIAS}
-          onChange={v => set('vicerrectoria', v)} cls={selectCls} />
+          onChange={v => set('vicerrectoria', v)} />
         <TextField label="Área / Programa" value={formData.areaPrograma} placeholder="Ej. Ingeniería de Sistemas"
           onChange={v => set('areaPrograma', v)} cls={inputCls} />
         <TextField label="Cargo Responsable" value={formData.cargoResponsable} placeholder="Ej. Director de Programa"
@@ -185,41 +184,37 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
-    /* ── Pasos IA ── */
-    const aiFields: Record<string, { field: keyof PlanData; emoji: string; title: string; desc: string; placeholder: string }> = {
-      accion:    { field: 'accionMejora', emoji: '⚡', title: 'Acción de mejora', desc: 'Describe la acción concreta que se implementará. La IA te ayudará a formularla de manera institucional.', placeholder: 'Describe la acción de mejora...' },
-      meta:      { field: 'meta',         emoji: '🎯', title: 'Meta',             desc: 'Define el resultado esperado de forma medible. La IA sugerirá cómo cuantificarla mejor.', placeholder: 'Define la meta cuantificable...' },
-      actividad: { field: 'actividad',    emoji: '📋', title: 'Actividad',         desc: 'Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos.', placeholder: 'Detalla las actividades...' },
-      avance:    { field: 'avance',       emoji: '📈', title: 'Avance',            desc: 'Reporta el estado actual. La IA sugerirá cómo estructurarlo con porcentaje y obstáculos.', placeholder: 'Describe el avance actual...' },
-      evidencia: { field: 'evidencia',    emoji: '📎', title: 'Evidencia',         desc: 'Indica qué documentos respaldan el avance. La IA sugerirá el tipo de evidencia adecuado.', placeholder: 'Indica el tipo de evidencia...' },
-    };
-
-    const aiKey = s === 'accion' ? 'accion' : s;
-    if (aiFields[aiKey]) {
-      const { field, emoji, title, desc, placeholder } = aiFields[aiKey];
+    /* ── Paso 3: Acción de mejora (CON IA) ── */
+    if (s === 'accion') {
+      const field: keyof PlanData = 'accionMejora';
       const status     = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
       const accepted   = aiAccepted[field];
       return (
         <div className="flex flex-col gap-5">
-          <StepIntro emoji={emoji} title={title} desc={desc} ai />
+          <StepIntro
+            emoji="⚡"
+            title="Acción de mejora"
+            desc="Describe la acción concreta que se implementará. La IA te ayudará a formularla de manera institucional."
+            ai
+          />
           <div className="flex flex-col gap-2">
             <textarea
               rows={4}
               value={formData[field]}
               onChange={e => set(field, e.target.value)}
-              placeholder={placeholder}
+              placeholder="Describe la acción de mejora..."
               className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`}
             />
-            {/* Botón verificar */}
             <button
               type="button"
               onClick={() => verifyWithAI(field)}
               disabled={status === 'loading' || !formData[field].trim()}
               className={`self-start flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all mt-1
                 ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                ${accepted ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                  'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                ${accepted
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}
             >
               {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
                accepted             ? <><CheckCircle2 size={13} /> Aceptado</> :
@@ -227,7 +222,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             </button>
           </div>
 
-          {/* Sugerencia IA */}
           <AnimatePresence>
             {status === 'done' && suggestion && !accepted && (
               <motion.div
@@ -261,7 +255,99 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       );
     }
 
-    /* ── Paso cronograma ── */
+    /* ── Paso 4: Meta (SIN IA — textarea simple) ── */
+    if (s === 'meta') return (
+      <div className="flex flex-col gap-5">
+        <StepIntro
+          emoji="📌"
+          title="Meta"
+          desc="Define el resultado esperado de forma medible y cuantificable."
+        />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Meta</span>
+          <textarea
+            rows={4}
+            value={formData.meta}
+            onChange={e => set('meta', e.target.value)}
+            placeholder="Define la meta cuantificable..."
+            className={`${inputCls} resize-none`}
+          />
+        </label>
+      </div>
+    );
+
+    /* ── Paso 5: Actividad (CON IA) ── */
+    if (s === 'actividad') {
+      const field: keyof PlanData = 'actividad';
+      const status     = aiStatus[field] || 'idle';
+      const suggestion = aiSuggestions[field];
+      const accepted   = aiAccepted[field];
+      return (
+        <div className="flex flex-col gap-5">
+          <StepIntro
+            emoji="📋"
+            title="Actividad"
+            desc="Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos."
+            ai
+          />
+          <div className="flex flex-col gap-2">
+            <textarea
+              rows={4}
+              value={formData[field]}
+              onChange={e => set(field, e.target.value)}
+              placeholder="Detalla las actividades..."
+              className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`}
+            />
+            <button
+              type="button"
+              onClick={() => verifyWithAI(field)}
+              disabled={status === 'loading' || !formData[field].trim()}
+              className={`self-start flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all mt-1
+                ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                ${accepted
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}
+            >
+              {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
+               accepted             ? <><CheckCircle2 size={13} /> Aceptado</> :
+                                      <><Sparkles size={13} /> Verificar con IA</>}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {status === 'done' && suggestion && !accepted && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 rounded-xl border border-[#008b8b]/25 bg-[#008b8b]/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles size={13} style={{ color: '#008b8b' }} />
+                    <span className="text-xs font-semibold" style={{ color: '#008b8b' }}>Sugerencia de IA</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed mb-3">{suggestion}</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => acceptSuggestion(field)}
+                      className="flex-1 text-xs py-2 rounded-lg font-medium transition-all"
+                      style={{ background: 'rgba(0,139,139,0.15)', color: '#008b8b', border: '1px solid rgba(0,139,139,0.3)' }}>
+                      Aceptar sugerencia
+                    </button>
+                    <button onClick={() => dismissSuggestion(field)}
+                      className="text-xs px-4 py-2 rounded-lg bg-white/5 text-slate-500 hover:text-slate-300 transition-all">
+                      Ignorar
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
+    /* ── Paso 6: Cronograma ── */
     if (s === 'cronograma') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📅" title="Cronograma" desc="Define el período de ejecución del plan de mejora." />
@@ -279,6 +365,48 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
               className={`${inputCls} [color-scheme:dark]`} />
           </label>
         </div>
+      </div>
+    );
+
+    /* ── Paso 7: Avance (SIN IA — textarea simple) ── */
+    if (s === 'avance') return (
+      <div className="flex flex-col gap-5">
+        <StepIntro
+          emoji="📈"
+          title="Avance"
+          desc="Reporta el estado actual del plan incluyendo porcentaje de cumplimiento y obstáculos encontrados."
+        />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Avance</span>
+          <textarea
+            rows={4}
+            value={formData.avance}
+            onChange={e => set('avance', e.target.value)}
+            placeholder="Describe el avance actual..."
+            className={`${inputCls} resize-none`}
+          />
+        </label>
+      </div>
+    );
+
+    /* ── Paso 8: Evidencia (SIN IA — textarea simple) ── */
+    if (s === 'evidencia') return (
+      <div className="flex flex-col gap-5">
+        <StepIntro
+          emoji="📎"
+          title="Evidencia"
+          desc="Indica qué documentos o registros respaldan el avance reportado."
+        />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Evidencia</span>
+          <textarea
+            rows={4}
+            value={formData.evidencia}
+            onChange={e => set('evidencia', e.target.value)}
+            placeholder="Indica el tipo de evidencia..."
+            className={`${inputCls} resize-none`}
+          />
+        </label>
       </div>
     );
 
@@ -410,20 +538,130 @@ function StepIntro({ emoji, title, desc, ai }: { emoji: string; title: string; d
   );
 }
 
-function SelectField({ label, value, options, onChange, cls }: {
-  label: string; value: string; options: string[]; onChange: (v: string) => void; cls: string;
+function SelectField({ label, value, options, onChange }: {
+  label: string; value: string; options: string[]; onChange: (v: string) => void; cls?: string;
 }) {
+  const [open, setOpen]   = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Cierra al hacer click fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Recalcula posición al hacer scroll en vez de cerrar
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+    const handler = () => {
+      if (!btnRef.current) return;
+      const rect = btnRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const menuHeight = Math.min(options.length * 44 + 8, 224);
+      const openUp = spaceBelow < menuHeight + 8 && rect.top > menuHeight;
+      setCoords({ top: openUp ? rect.top - menuHeight - 6 : rect.bottom + 6, left: rect.left, width: rect.width, openUp });
+    };
+    window.addEventListener('scroll', handler, true);
+    return () => window.removeEventListener('scroll', handler, true);
+  }, [open, options.length]);
+
+  const handleOpen = () => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const menuHeight = Math.min(options.length * 44 + 8, 224); // max-h-56
+    const openUp = spaceBelow < menuHeight + 8 && rect.top > menuHeight;
+    setCoords({
+      top:    openUp ? rect.top - menuHeight - 6 : rect.bottom + 6,
+      left:   rect.left,
+      width:  rect.width,
+      openUp,
+    });
+    setOpen(o => !o);
+  };
+
   return (
-    <label className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       <span className="text-xs tracking-widest uppercase text-white/40 font-medium">{label}</span>
-      <div className="relative">
-        <select value={value} onChange={e => onChange(e.target.value)} className={cls}>
-          <option value="">Seleccionar...</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
-      </div>
-    </label>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={handleOpen}
+        className={`w-full flex items-center justify-between bg-white/5 border rounded-xl px-4 py-3.5 text-sm
+          transition-all hover:border-white/20 focus:outline-none
+          ${open ? 'border-[#008b8b]/60 ring-1 ring-[#008b8b]/30' : 'border-white/10'}
+          ${value ? 'text-white' : 'text-white/30'}`}
+      >
+        <span className="truncate">{value || 'Seleccionar...'}</span>
+        <ChevronDown
+          size={14}
+          className="ml-2 shrink-0 text-white/30 transition-transform duration-200"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && coords && (
+          <motion.div
+            ref={menuRef}
+            initial={{ opacity: 0, y: coords.openUp ? 6 : -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: coords.openUp ? 6 : -6, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            style={{
+              position: 'fixed',
+              top:    coords.top,
+              left:   coords.left,
+              width:  coords.width,
+              zIndex: 9999,
+              background: 'rgba(11, 22, 31, 0.98)',
+              border: '1px solid rgba(0,139,139,0.3)',
+              borderRadius: '0.75rem',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,139,139,0.1)',
+              backdropFilter: 'blur(16px)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ maxHeight: '224px', overflowY: 'auto', padding: '4px 0' }}>
+              {options.map(o => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => { onChange(o); setOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 16px',
+                    fontSize: '0.875rem',
+                    textAlign: 'left',
+                    transition: 'background 0.15s',
+                    background: value === o ? 'rgba(0,139,139,0.15)' : 'transparent',
+                    color: value === o ? '#ffffff' : 'rgba(255,255,255,0.55)',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => { if (value !== o) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = value === o ? 'rgba(0,139,139,0.15)' : 'transparent'; (e.currentTarget as HTMLElement).style.color = value === o ? '#fff' : 'rgba(255,255,255,0.55)'; }}
+                >
+                  <span>{o}</span>
+                  {value === o && <Check size={13} style={{ color: '#008b8b', flexShrink: 0, marginLeft: '8px' }} />}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
