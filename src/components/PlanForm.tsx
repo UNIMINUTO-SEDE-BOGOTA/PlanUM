@@ -233,7 +233,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setStep(next);
   };
 
-  const set = (field: keyof PlanData, value: string) => {
+  const setFormField = (field: keyof PlanData, value: string) => {
     setFormData(p => ({ ...p, [field]: value }));
     // Cuando el usuario edita el texto de IA, se resetea la verificación
     if (field === 'accionMejora' || field === 'meta' || field === 'actividad') {
@@ -297,7 +297,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
   const verifyWithAI = async (field: keyof PlanData) => {
-    const val = formData[field];
+    const val = formData[field] as string;
     if (!val || !val.trim()) return;
     
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
@@ -350,11 +350,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
   };
 
-  const reconsultAI = (field: keyof PlanData) => {
-    setAiStatus(p => ({ ...p, [field]: 'idle' }));
-    setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
-  };
-
   const isAiVerified = (field: keyof PlanData): boolean => {
     return aiVerified[field] === true;
   };
@@ -389,13 +384,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
         <StepIntro emoji="🎯" title="Identificación PDI"
           desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional." />
         <SelectField label="Frente PDI relacionado" value={formData.frentePDI} options={FRENTE_PDI}
-          onChange={v => set('frentePDI', v)} />
+          onChange={v => setFormField('frentePDI', v)} />
         <SelectField label="Factor Primario - Macroproceso" value={formData.nivel1} options={NIVEL1}
-          onChange={v => set('nivel1', v)} />
+          onChange={v => setFormField('nivel1', v)} />
         <SelectField label="Factor Secundario - Proceso y Riesgo" value={formData.nivel2} options={NIVEL2}
-          onChange={v => set('nivel2', v)} />
+          onChange={v => setFormField('nivel2', v)} />
         <SelectField label="Prioridad / Nivel de riesgo" value={formData.prioridad} options={PRIORIDADES}
-          onChange={v => set('prioridad', v)} />
+          onChange={v => setFormField('prioridad', v)} />
       </div>
     );
 
@@ -404,13 +399,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
         <StepIntro emoji="🏛️" title="Unidad Responsable"
           desc="Define quién lidera y ejecuta este plan de mejora." />
         <SelectField label="Vicerrectoría / Escuelas" value={formData.vicerrectoria} options={VICERRECTORIAS}
-          onChange={v => set('vicerrectoria', v)} />
+          onChange={v => setFormField('vicerrectoria', v)} />
         <TextField label="Área / Programa" value={formData.areaPrograma}
-          placeholder="Ej. Ingeniería de Sistemas" onChange={v => set('areaPrograma', v)} cls={inputCls} />
+          placeholder="Ej. Ingeniería de Sistemas" onChange={v => setFormField('areaPrograma', v)} cls={inputCls} />
         <TextField label="Cargo Responsable" value={formData.cargoResponsable}
-          placeholder="Ej. Director de Programa" onChange={v => set('cargoResponsable', v)} cls={inputCls} />
+          placeholder="Ej. Director de Programa" onChange={v => setFormField('cargoResponsable', v)} cls={inputCls} />
         <TextField label="Iniciativa relacionada" value={formData.iniciativa}
-          placeholder="Ej. Plan de retención 2025" onChange={v => set('iniciativa', v)} cls={inputCls} />
+          placeholder="Ej. Plan de retención 2025" onChange={v => setFormField('iniciativa', v)} cls={inputCls} />
       </div>
     );
 
@@ -420,6 +415,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
       const verified = isAiVerified(field);
+      const fieldValue = formData[field] as string;
       
       return (
         <div className="flex flex-col gap-5">
@@ -427,42 +423,42 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             desc="Describe la acción concreta que se implementará. La IA buscará acciones similares en el PUM y te orientará."
             ai mandatory />
           <div className="flex flex-col gap-2">
-            <textarea rows={4} value={formData[field]}
-              onChange={e => set(field, e.target.value)}
+            <textarea rows={4} value={fieldValue}
+              onChange={e => setFormField(field, e.target.value)}
               placeholder="Describe la acción de mejora..."
               className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field]?.trim()}
-                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${verified
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+              {!verified && (
+                <button type="button" onClick={() => verifyWithAI(field)}
+                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
-                              <><Sparkles size={13} /> Verificar con IA</>}
+                                           <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
-                
-                {verified && status !== 'loading' && (
-                  <button
-                    type="button"
-                    onClick={() => reconsultAI(field)}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                  >
-                    <RefreshCw size={12} /> Nueva consulta
-                  </button>
-                )}
-                
-              {formData[field]?.trim() && !verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
+              )}
+              
+              {verified && (
+                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 size={13} /> Verificado con IA
                 </span>
               )}
-              {verified && (
-                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Verificado con IA
+              
+              {verified && status !== 'loading' && (
+                <button
+                  type="button"
+                  onClick={() => verifyWithAI(field)}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <RefreshCw size={12} /> Nueva consulta
+                </button>
+              )}
+              
+              {fieldValue?.trim() && !verified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
             </div>
@@ -479,6 +475,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
       const verified = isAiVerified(field);
+      const fieldValue = formData[field] as string;
       
       return (
         <div className="flex flex-col gap-5">
@@ -486,42 +483,42 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             desc="Define el resultado esperado de forma medible. La IA buscará metas similares en el PUM para orientarte."
             ai mandatory />
           <div className="flex flex-col gap-2">
-            <textarea rows={4} value={formData[field]}
-              onChange={e => set(field, e.target.value)}
+            <textarea rows={4} value={fieldValue}
+              onChange={e => setFormField(field, e.target.value)}
               placeholder="Define la meta cuantificable..."
               className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field]?.trim()}
-                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${verified
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+              {!verified && (
+                <button type="button" onClick={() => verifyWithAI(field)}
+                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
-                              <><Sparkles size={13} /> Verificar con IA</>}
+                                           <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
-                
-                {verified && status !== 'loading' && (
-                  <button
-                    type="button"
-                    onClick={() => reconsultAI(field)}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                  >
-                    <RefreshCw size={12} /> Nueva consulta
-                  </button>
-                )}
-                
-              {formData[field]?.trim() && !verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
+              )}
+              
+              {verified && (
+                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 size={13} /> Verificado con IA
                 </span>
               )}
-              {verified && (
-                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Verificado con IA
+              
+              {verified && status !== 'loading' && (
+                <button
+                  type="button"
+                  onClick={() => verifyWithAI(field)}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <RefreshCw size={12} /> Nueva consulta
+                </button>
+              )}
+              
+              {fieldValue?.trim() && !verified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
             </div>
@@ -538,6 +535,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
       const verified = isAiVerified(field);
+      const fieldValue = formData[field] as string;
       
       return (
         <div className="flex flex-col gap-5">
@@ -545,42 +543,42 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             desc="Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos." 
             ai mandatory />
           <div className="flex flex-col gap-2">
-            <textarea rows={4} value={formData[field]}
-              onChange={e => set(field, e.target.value)}
+            <textarea rows={4} value={fieldValue}
+              onChange={e => setFormField(field, e.target.value)}
               placeholder="Detalla las actividades..."
               className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field]?.trim()}
-                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${verified
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+              {!verified && (
+                <button type="button" onClick={() => verifyWithAI(field)}
+                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
-                              <><Sparkles size={13} /> Verificar con IA</>}
+                                           <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
-                
-                {verified && status !== 'loading' && (
-                  <button
-                    type="button"
-                    onClick={() => reconsultAI(field)}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                  >
-                    <RefreshCw size={12} /> Nueva consulta
-                  </button>
-                )}
-                
-              {formData[field]?.trim() && !verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
+              )}
+              
+              {verified && (
+                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <CheckCircle2 size={13} /> Verificado con IA
                 </span>
               )}
-              {verified && (
-                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Verificado con IA
+              
+              {verified && status !== 'loading' && (
+                <button
+                  type="button"
+                  onClick={() => verifyWithAI(field)}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <RefreshCw size={12} /> Nueva consulta
+                </button>
+              )}
+              
+              {fieldValue?.trim() && !verified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
             </div>
@@ -599,13 +597,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
           <label className="flex flex-col gap-1.5">
             <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Fecha de inicio</span>
             <input type="date" value={formData.fechaInicio}
-              onChange={e => set('fechaInicio', e.target.value)}
+              onChange={e => setFormField('fechaInicio', e.target.value)}
               className={`${inputCls} [color-scheme:dark]`} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Fecha de cierre</span>
             <input type="date" value={formData.fechaCierre}
-              onChange={e => set('fechaCierre', e.target.value)}
+              onChange={e => setFormField('fechaCierre', e.target.value)}
               className={`${inputCls} [color-scheme:dark]`} />
           </label>
         </div>
@@ -619,7 +617,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Avance</span>
           <textarea rows={4} value={formData.avance}
-            onChange={e => set('avance', e.target.value)}
+            onChange={e => setFormField('avance', e.target.value)}
             placeholder="Describe el avance actual..."
             className={`${inputCls} resize-none`} />
         </label>
@@ -634,7 +632,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Descripción de evidencia</span>
           <textarea rows={3} value={formData.evidencia}
-            onChange={e => set('evidencia', e.target.value)}
+            onChange={e => setFormField('evidencia', e.target.value)}
             placeholder="Describe los documentos o registros que respaldan el avance..."
             className={`${inputCls} resize-none`} />
         </label>
