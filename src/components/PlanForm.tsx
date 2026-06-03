@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft, Check, Link2, ExternalLink, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft, Check, Link2, ExternalLink, AlertCircle, RefreshCw, Plus, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { PlanData } from '../App';
 
@@ -14,7 +14,7 @@ const EMPTY_FORM: PlanData = {
   vicerrectoria: '', areaPrograma: '', cargoResponsable: '', iniciativa: '',
   accionMejora: '', meta: '', actividad: '',
   fechaInicio: '', fechaCierre: '',
-  avance: '', evidencia: '', evidenciaUrl: '',
+  avance: '', evidencia: '', evidenciaUrl: '', evidenciaUrls: [],
 };
 
 // FRENTE PDI numerado del 1 al 8
@@ -170,6 +170,13 @@ const PRIORIDADES = [
 
 type AIStatus = 'idle' | 'loading' | 'done';
 
+interface UrlItem {
+  id: string;
+  value: string;
+  status: 'idle' | 'loading' | 'valid' | 'invalid';
+  message: string;
+}
+
 const STEPS = [
   { id: 'pdi',        label: 'Identificación PDI',  emoji: '🎯' },
   { id: 'unidad',     label: 'Unidad Responsable',   emoji: '🏛️' },
@@ -194,11 +201,29 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const [aiStatus, setAiStatus]     = useState<Record<string, AIStatus>>({});
   const [aiSuggestions, setAiSugg]  = useState<Record<string, string>>({});
-  const [aiAccepted, setAiAccepted] = useState<Record<string, boolean>>({});
+  const [aiVerified, setAiVerified] = useState<Record<string, boolean>>({});
 
-  // Estado para validación de URL
-  const [urlStatus, setUrlStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
-  const [urlMessage, setUrlMessage] = useState('');
+  // Estado para múltiples enlaces de OneDrive
+  const [urls, setUrls] = useState<UrlItem[]>(() => {
+    const initialUrls = initialData?.evidenciaUrls || [];
+    if (initialUrls.length > 0) {
+      return initialUrls.map((url, idx) => ({
+        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${idx}`,
+        value: url,
+        status: 'idle' as const,
+        message: '',
+      }));
+    }
+    if (initialData?.evidenciaUrl) {
+      return [{
+        id: crypto.randomUUID ? crypto.randomUUID() : '1',
+        value: initialData.evidenciaUrl,
+        status: 'idle' as const,
+        message: '',
+      }];
+    }
+    return [{ id: crypto.randomUUID ? crypto.randomUUID() : '1', value: '', status: 'idle', message: '' }];
+  });
 
   const totalSteps = STEPS.length;
   const progress   = ((step) / (totalSteps - 1)) * 100;
@@ -210,9 +235,62 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const set = (field: keyof PlanData, value: string) => {
     setFormData(p => ({ ...p, [field]: value }));
-    if (field === 'evidenciaUrl') {
-      setUrlStatus('idle');
-      setUrlMessage('');
+    // Cuando el usuario edita el texto de IA, se resetea la verificación
+    if (field === 'accionMejora' || field === 'meta' || field === 'actividad') {
+      setAiVerified(p => ({ ...p, [field]: false }));
+      setAiStatus(p => ({ ...p, [field]: 'idle' }));
+      setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
+    }
+  };
+
+  // Funciones para múltiples enlaces
+  const addUrlField = () => {
+    setUrls(prev => [...prev, {
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${prev.length}`,
+      value: '',
+      status: 'idle',
+      message: '',
+    }]);
+  };
+
+  const removeUrlField = (id: string) => {
+    setUrls(prev => prev.filter(url => url.id !== id));
+  };
+
+  const updateUrlValue = (id: string, value: string) => {
+    setUrls(prev => prev.map(url =>
+      url.id === id ? { ...url, value, status: 'idle', message: '' } : url
+    ));
+  };
+
+  const verifySingleUrl = async (id: string) => {
+    const urlItem = urls.find(u => u.id === id);
+    if (!urlItem || !urlItem.value.trim()) return;
+
+    setUrls(prev => prev.map(u =>
+      u.id === id ? { ...u, status: 'loading', message: '' } : u
+    ));
+
+    const onedrivePattern = /^(https?:\/\/)?(.*\.)?(onedrive\.live\.com|1drv\.ms|sharepoint\.com)\/.*/i;
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (onedrivePattern.test(urlItem.value)) {
+      setUrls(prev => prev.map(u =>
+        u.id === id ? { ...u, status: 'valid', message: '✓ Enlace de OneDrive válido' } : u
+      ));
+    } else {
+      setUrls(prev => prev.map(u =>
+        u.id === id ? { ...u, status: 'invalid', message: '✗ El enlace no parece ser de OneDrive. Asegúrate de copiar el enlace correcto.' } : u
+      ));
+    }
+  };
+
+  const openUrl = (url: string) => {
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      window.open(url, '_blank');
+    } else if (url) {
+      window.open('https://' + url, '_blank');
     }
   };
 
@@ -221,6 +299,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field];
     if (!val || !val.trim()) return;
+    
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
     try {
@@ -247,45 +326,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
       setAiSugg(p => ({ ...p, [field]: data.orientacion ?? 'Sin sugerencia disponible.' }));
       setAiStatus(p => ({ ...p, [field]: 'done' }));
+      setAiVerified(p => ({ ...p, [field]: true }));
 
     } catch (err) {
       console.error('Error webhook:', err);
       setAiSugg(p => ({ ...p, [field]: 'No se pudo conectar con el orientador. Intenta de nuevo.' }));
       setAiStatus(p => ({ ...p, [field]: 'done' }));
-    }
-  };
-
-  // Verificar URL de OneDrive
-  const verifyUrl = () => {
-    const url = formData.evidenciaUrl?.trim();
-    if (!url) {
-      setUrlStatus('invalid');
-      setUrlMessage('Por favor ingresa un enlace de OneDrive');
-      return;
-    }
-
-    setUrlStatus('loading');
-    setUrlMessage('');
-
-    const onedrivePattern = /^(https?:\/\/)?(.*\.)?(onedrive\.live\.com|1drv\.ms|sharepoint\.com)\/.*/i;
-    
-    setTimeout(() => {
-      if (onedrivePattern.test(url)) {
-        setUrlStatus('valid');
-        setUrlMessage('✓ Enlace de OneDrive válido');
-      } else {
-        setUrlStatus('invalid');
-        setUrlMessage('✗ El enlace no parece ser de OneDrive. Asegúrate de copiar el enlace correcto.');
-      }
-    }, 500);
-  };
-
-  const openUrl = () => {
-    const url = formData.evidenciaUrl?.trim();
-    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-      window.open(url, '_blank');
-    } else if (url) {
-      window.open('https://' + url, '_blank');
+      setAiVerified(p => ({ ...p, [field]: true }));
     }
   };
 
@@ -294,9 +341,8 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (!s) return;
     const clean = s.replace(/^.*?:\s*"?/, '').replace(/"?\s*$/, '').trim();
     setFormData(p => ({ ...p, [field]: clean }));
-    setAiAccepted(p => ({ ...p, [field]: true }));
-    // Limpiar el estado para que no se muestre la sugerencia después de aceptar
     setAiStatus(p => ({ ...p, [field]: 'idle' }));
+    setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
   };
 
   const dismissSuggestion = (field: keyof PlanData) => {
@@ -304,26 +350,32 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
   };
 
-  // Verifica si un campo con IA ya fue verificado (se considera verificado si se presionó el botón)
+  const reconsultAI = (field: keyof PlanData) => {
+    setAiStatus(p => ({ ...p, [field]: 'idle' }));
+    setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
+  };
+
   const isAiVerified = (field: keyof PlanData): boolean => {
-    return aiStatus[field] === 'done' || !!aiAccepted[field];
+    return aiVerified[field] === true;
   };
 
   const canAdvance = (): boolean => {
     const s = STEPS[step].id;
     if (s === 'pdi')       return !!(formData.frentePDI && formData.nivel1 && formData.nivel2 && formData.prioridad);
     if (s === 'unidad')    return !!(formData.vicerrectoria && formData.areaPrograma && formData.cargoResponsable && formData.iniciativa);
-    // Los campos con IA ahora son OBLIGATORIOS (deben tener texto Y haber sido verificados)
-    if (s === 'accion')    return !!(formData.accionMejora.trim() && isAiVerified('accionMejora'));
-    if (s === 'meta')      return !!(formData.meta.trim() && isAiVerified('meta'));
-    if (s === 'actividad') return !!(formData.actividad.trim() && isAiVerified('actividad'));
+    if (s === 'accion')    return !!(formData.accionMejora?.trim() && isAiVerified('accionMejora'));
+    if (s === 'meta')      return !!(formData.meta?.trim() && isAiVerified('meta'));
+    if (s === 'actividad') return !!(formData.actividad?.trim() && isAiVerified('actividad'));
     if (s === 'cronograma')return !!(formData.fechaInicio && formData.fechaCierre);
-    if (s === 'avance')    return !!formData.avance.trim();
+    if (s === 'avance')    return !!formData.avance?.trim();
     if (s === 'evidencia') return true;
     return true;
   };
 
-  const handleSubmit = () => onSubmit(formData);
+  const handleSubmit = () => {
+    const evidenciaUrls = urls.map(u => u.value).filter(v => v.trim());
+    onSubmit({ ...formData, evidenciaUrls });
+  };
 
   const inputCls = `w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm
     placeholder:text-white/30 focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
@@ -362,13 +414,12 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
-    // Paso 3: Acción de mejora (OBLIGATORIO con IA)
+    // Paso 3: Acción de mejora
     if (s === 'accion') {
       const field: keyof PlanData = 'accionMejora';
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted = aiAccepted[field];
-      const isVerified = isAiVerified(field);
+      const verified = isAiVerified(field);
       
       return (
         <div className="flex flex-col gap-5">
@@ -379,46 +430,55 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Describe la acción de mejora..."
-              className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
+              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field].trim()}
+                disabled={status === 'loading' || !formData[field]?.trim()}
                 className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                   ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${accepted
+                  ${verified
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
                               <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
                 
-              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                {verified && status !== 'loading' && (
+                  <button
+                    type="button"
+                    onClick={() => reconsultAI(field)}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <RefreshCw size={12} /> Nueva consulta
+                  </button>
+                )}
+                
+              {formData[field]?.trim() && !verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
                   <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
-              {isVerified && (
+              {verified && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={12} /> Verificado con IA
                 </span>
               )}
             </div>
           </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
+          <AIPanel field={field} status={status} suggestion={suggestion} 
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
         </div>
       );
     }
 
-    // Paso 4: Meta (OBLIGATORIO con IA)
+    // Paso 4: Meta
     if (s === 'meta') {
       const field: keyof PlanData = 'meta';
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted = aiAccepted[field];
-      const isVerified = isAiVerified(field);
+      const verified = isAiVerified(field);
       
       return (
         <div className="flex flex-col gap-5">
@@ -429,46 +489,55 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Define la meta cuantificable..."
-              className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
+              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field].trim()}
+                disabled={status === 'loading' || !formData[field]?.trim()}
                 className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                   ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${accepted
+                  ${verified
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
                               <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
                 
-              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                {verified && status !== 'loading' && (
+                  <button
+                    type="button"
+                    onClick={() => reconsultAI(field)}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <RefreshCw size={12} /> Nueva consulta
+                  </button>
+                )}
+                
+              {formData[field]?.trim() && !verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
                   <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
-              {isVerified && (
+              {verified && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={12} /> Verificado con IA
                 </span>
               )}
             </div>
           </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
+          <AIPanel field={field} status={status} suggestion={suggestion} 
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
         </div>
       );
     }
 
-    // Paso 5: Actividad (OBLIGATORIO con IA)
+    // Paso 5: Actividad
     if (s === 'actividad') {
       const field: keyof PlanData = 'actividad';
       const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted = aiAccepted[field];
-      const isVerified = isAiVerified(field);
+      const verified = isAiVerified(field);
       
       return (
         <div className="flex flex-col gap-5">
@@ -479,34 +548,44 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Detalla las actividades..."
-              className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
+              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
               <button type="button" onClick={() => verifyWithAI(field)}
-                disabled={status === 'loading' || !formData[field].trim()}
+                disabled={status === 'loading' || !formData[field]?.trim()}
                 className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                   ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                  ${accepted
+                  ${verified
                     ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                   verified ? <><CheckCircle2 size={13} /> Verificado</> :
                               <><Sparkles size={13} /> Verificar con IA</>}
                 </button>
                 
-              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                {verified && status !== 'loading' && (
+                  <button
+                    type="button"
+                    onClick={() => reconsultAI(field)}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                  >
+                    <RefreshCw size={12} /> Nueva consulta
+                  </button>
+                )}
+                
+              {formData[field]?.trim() && !verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
                   <AlertCircle size={12} /> Obligatorio verificar con IA
                 </span>
               )}
-              {isVerified && (
+              {verified && (
                 <span className="text-xs text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 size={12} /> Verificado con IA
                 </span>
               )}
             </div>
           </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
+          <AIPanel field={field} status={status} suggestion={suggestion} 
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
         </div>
       );
@@ -560,40 +639,67 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             className={`${inputCls} resize-none`} />
         </label>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Enlace OneDrive</span>
-          <div className="flex gap-2">
-            <input 
-              type="url" 
-              value={formData.evidenciaUrl || ''}
-              onChange={e => set('evidenciaUrl', e.target.value)}
-              placeholder="https://uniminuto-my.sharepoint.com/..."
-              className={`${inputCls} flex-1 ${urlStatus === 'valid' ? 'border-emerald-500/60' : urlStatus === 'invalid' ? 'border-red-500/60' : ''}`}
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Enlaces OneDrive</span>
             <button
               type="button"
-              onClick={verifyUrl}
-              disabled={urlStatus === 'loading'}
-              className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-50"
+              onClick={addUrlField}
+              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 transition-all"
             >
-              {urlStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
+              <Plus size={12} />
+              Agregar enlace
             </button>
-            {formData.evidenciaUrl && urlStatus === 'valid' && (
-              <button
-                type="button"
-                onClick={openUrl}
-                className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 border border-white/10 hover:bg-white/10"
-              >
-                <ExternalLink size={16} />
-              </button>
-            )}
           </div>
           
-          {urlMessage && (
-            <p className={`text-xs mt-1 ${urlStatus === 'valid' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {urlMessage}
-            </p>
-          )}
+          {urls.map((urlItem) => (
+            <div key={urlItem.id} className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex gap-2">
+                <input 
+                  type="url" 
+                  value={urlItem.value}
+                  onChange={e => updateUrlValue(urlItem.id, e.target.value)}
+                  placeholder="https://uniminuto-my.sharepoint.com/..."
+                  className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm
+                    placeholder:text-white/30 focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
+                    transition-all hover:border-white/20
+                    ${urlItem.status === 'valid' ? 'border-emerald-500/60' : urlItem.status === 'invalid' ? 'border-red-500/60' : 'border-white/10'}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => verifySingleUrl(urlItem.id)}
+                  disabled={urlItem.status === 'loading' || !urlItem.value.trim()}
+                  className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-50"
+                >
+                  {urlItem.status === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
+                </button>
+                {urlItem.value && urlItem.status === 'valid' && (
+                  <button
+                    type="button"
+                    onClick={() => openUrl(urlItem.value)}
+                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 border border-white/10 hover:bg-white/10"
+                  >
+                    <ExternalLink size={16} />
+                  </button>
+                )}
+                {urls.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeUrlField(urlItem.id)}
+                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              
+              {urlItem.message && (
+                <p className={`text-xs mt-1 ${urlItem.status === 'valid' ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {urlItem.message}
+                </p>
+              )}
+            </div>
+          ))}
           
           <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <div className="flex items-start gap-2">
@@ -678,9 +784,9 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             Siguiente <ChevronRight size={16} />
           </button>
         ) : (
-          <button onClick={handleSubmit} disabled={!canAdvance()}
+          <button onClick={handleSubmit}
             className="flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-semibold text-white transition-all
-              hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+              hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: 'linear-gradient(135deg, #e15e29 0%, #c94d1a 100%)',
               boxShadow: '0 4px 20px rgba(225,94,41,0.3)',
@@ -693,17 +799,16 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   );
 }
 
-function AIPanel({ field, status, suggestion, accepted, onAccept, onDismiss }: {
+function AIPanel({ field, status, suggestion, onAccept, onDismiss }: {
   field: keyof PlanData;
   status: AIStatus;
   suggestion?: string;
-  accepted: boolean;
   onAccept: (f: keyof PlanData) => void;
   onDismiss: (f: keyof PlanData) => void;
 }) {
   return (
     <AnimatePresence>
-      {status === 'done' && suggestion && !accepted && (
+      {status === 'done' && suggestion && (
         <motion.div
           initial={{ opacity: 0, y: -8, height: 0 }}
           animate={{ opacity: 1, y: 0, height: 'auto' }}
