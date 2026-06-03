@@ -1,7 +1,7 @@
 import XLSXStyle from 'xlsx-js-style';
 import type { PlanData } from '../App';
 
-// ─── Paleta de colores (mismos del PDF) ──────────────────────────────────────
+// ─── Paleta de colores ──────────────────────────────────────
 const C = {
   DARK_TEAL:        '1A3A4A',
   MID_TEAL:         '2A5A6A',
@@ -13,6 +13,7 @@ const C = {
   MUTED:            '888888',
   BORDER:           'B0CDD5',
 } as const;
+
 
 // ─── Helpers de estilo ────────────────────────────────────────────────────────
 type HAlign = 'left' | 'center' | 'right';

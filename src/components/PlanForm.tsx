@@ -220,8 +220,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field];
-    if (!val.trim()) return;
-
+    if (!val || typeof val !== 'string' || !val.trim()) return;
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
     try {
