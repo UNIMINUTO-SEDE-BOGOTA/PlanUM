@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Send, Sparkles, Loader2, CheckCircle2, ChevronDown, ArrowLeft, Check, Link2, ExternalLink, AlertCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { PlanData } from '../App';
 
@@ -14,40 +14,154 @@ const EMPTY_FORM: PlanData = {
   vicerrectoria: '', areaPrograma: '', cargoResponsable: '', iniciativa: '',
   accionMejora: '', meta: '', actividad: '',
   fechaInicio: '', fechaCierre: '',
-  avance: '', evidencia: '',
+  avance: '', evidencia: '', evidenciaUrl: '',
 };
 
+// FRENTE PDI numerado del 1 al 8
 const FRENTE_PDI = [
-  'Docencia e innovación curricular',
-  'Investigación y producción de conocimiento',
-  'Internacionalización',
-  'Extensión y proyección social',
-  'Bienestar universitario',
-  'Gestión institucional',
+  '1. Identidad misional y cultura Minuto de Dios',
+  '2. Innovacion academica, calidad y experiencia vibrante',
+  '3. Investigacion, innovacion e impacto social',
+  '4. Centros universitarios y desarrollo organizacional',
+  '5. UNIMINUTO Virtual',
+  '6. Sistema Universitario Digital',
+  '7. Mercadeo, captacion y experiencia',
+  '8. Sostenibilidad y ecologia integral',
 ];
+
+// FACTOR PRIMARIO - MACROPROCESO (33 opciones)
 const NIVEL1 = [
-  'Acreditación institucional',
-  'Calidad académica',
-  'Transformación digital',
-  'Sostenibilidad financiera',
-  'Talento humano',
+  'Institucional 1: Identidad institucional',
+  'Institucional 2: Gobierno institucional y transparencia',
+  'Institucional 3: Desarrollo, gestión y sostenibilidad institucional',
+  'Institucional 4: Mejoramiento continuo y autorregulacion',
+  'Institucional 5: Estructura y procesos academicos',
+  'Institucional 6: Aportes de la investigacion, la innovacion y el desarrollo tecnologico',
+  'Institucional 7: Impacto social',
+  'Institucional 8: Visibilidad nacional e internacional',
+  'Institucional 9: Bienestar institucional',
+  'Institucional 10: Comunidad de profesores',
+  'Institucional 11: Comunidad de estudiantes',
+  'Institucional 12: Comunidad de egresados',
+  'Programa 1: Proyecto educativo del programa',
+  'Programa 2: Estudiantes',
+  'Programa 3: Profesores',
+  'Programa 4: Egresados',
+  'Programa 5: Aspectos academicos y resultados de aprendizaje',
+  'Programa 6: Permanencia y graduacion',
+  'Programa 7: Interaccion con el entorno nacional e internacional',
+  'Programa 8: Aportes de la investigacion, la innovacion, el desarrollo tecnologico',
+  'Programa 9: Bienestar de la comunidad academica del programa',
+  'Programa 10: Medios educativos y ambientes de aprendizaje',
+  'Programa 11: Organizacion, administracion y financiacion del programa',
+  'Programa 12: Recursos fisicos y tecnologicos',
+  'Macroproceso 1: Direccionamiento estrategico',
+  'Macroproceso 2: Calidad integral',
+  'Macroproceso 3: Relaciones interinstitucionales',
+  'Macroproceso 4: Desarrollo integral del talento humano',
+  'Macroproceso 5: Bienestar institucional e identidad misional',
+  'Macroproceso 6: Docencia',
+  'Macroproceso 7: Investigacion',
+  'Macroproceso 8: Proyeccion social',
+  'Macroproceso 9: Gestion administrativa y financiera',
+  'Macroproceso 10: Gestion de mercadeo y posicionamiento',
+  'Macroproceso 11: Gestion Juridica',
+  'Macroproceso 12: Gestion de la planeacion y control',
+  'Macroproceso 13: Gestion de la infraestructura fisica y tecnologica',
 ];
+
+// FACTOR SECUNDARIO - PROCESO Y RIESGO (50 opciones)
 const NIVEL2 = [
-  'Diseño curricular',
-  'Evaluación docente',
-  'Infraestructura tecnológica',
-  'Gestión del riesgo',
-  'Cultura organizacional',
+  'Institucional 1: Identidad institucional',
+  'Institucional 2: Gobierno institucional y transparencia',
+  'Institucional 3: Desarrollo, gestión y sostenibilidad institucional',
+  'Institucional 4: Mejoramiento continuo y autorregulacion',
+  'Institucional 5: Estructura y procesos academicos',
+  'Institucional 6: Aportes de la investigacion, la innovacion y el desarrollo tecnologico',
+  'Institucional 7: Impacto social',
+  'Institucional 8: Visibilidad nacional e internacional',
+  'Institucional 9: Bienestar institucional',
+  'Institucional 10: Comunidad de profesores',
+  'Institucional 11: Comunidad de estudiantes',
+  'Institucional 12: Comunidad de egresados',
+  'Programa 1: Proyecto educativo del programa',
+  'Programa 2: Estudiantes',
+  'Programa 3: Profesores',
+  'Programa 4: Egresados',
+  'Programa 5: Aspectos academicos y resultados de aprendizaje',
+  'Programa 6: Permanencia y graduacion',
+  'Programa 7: Interaccion con el entorno nacional e internacional',
+  'Programa 8: Aportes de la investigacion, la innovacion, el desarrollo tecnologico',
+  'Programa 9: Bienestar de la comunidad academica del programa',
+  'Programa 10: Medios educativos y ambientes de aprendizaje',
+  'Programa 11: Organizacion, administracion y financiacion del programa',
+  'Programa 12: Recursos fisicos y tecnologicos',
+  'Proceso 1: Planeacion estrategica',
+  'Proceso 2: Gestion de la informacion',
+  'Proceso 3: Gestion de proyectos',
+  'Proceso 4: Aseguramiento de la calidad de procesos',
+  'Proceso 5: Aseguramiento de la calidad academica',
+  'Proceso 6: Gestion del registro calificado',
+  'Proceso 7: Gestion de la experiencia del usuario',
+  'Proceso 8: Asuntos globales',
+  'Proceso 9: Alianzas e iniciativas estrategicas',
+  'Proceso 10: Comunicaciones corporativas',
+  'Proceso 11: Atraccion, seleccion y onboarding',
+  'Proceso 12: Gestion del conocimiento corporativo',
+  'Proceso 13: Contratacion y nomina',
+  'Proceso 14: Desarrollo y sucesion',
+  'Proceso 15: Seguridad, salud en el trabajo y gestion ambiental',
+  'Proceso 16: Cultura del desempeño',
+  'Proceso 17: Diseño organizacional y compensacion',
+  'Proceso 18: Desarrollo y fortalecimiento del bienestar institucional',
+  'Proceso 19: Pastoral',
+  'Proceso 20: Enseñanza, aprendizaje y evaluacion',
+  'Proceso 21: Desarrollo curricular',
+  'Proceso 22: Vida estudiantil',
+  'Proceso 23: Investigacion, desarrollo, innovacion y creacion artistica y cultural',
+  'Proceso 24: Investigacion formativa',
+  'Proceso 25: Gestion editorial',
+  'Proceso 26: Transferencia de conocimiento y tecnologia',
+  'Proceso 27: Practica profesional',
+  'Proceso 28: Practica en responsabilidad social',
+  'Proceso 29: Voluntariado',
+  'Proceso 30: Relacionamiento con egresados y egresados no graduados',
+  'Proceso 31: Educacion continua',
+  'Proceso 32: Articulacion',
+  'Proceso 33: Gestion y desarrollo del emprendimiento',
+  'Proceso 34: Gestion de la empleabilidad',
+  'Proceso 35: Gestion de ingresos',
+  'Proceso 36: Aprovisionamiento',
+  'Proceso 37: Planeacion financiera y presupuesto',
+  'Proceso 38: Administracion de tesoreria',
+  'Proceso 39: Gestion academico-Administrativa',
+  'Proceso 40: Cotabilidad financiera y costeo',
+  'Proceso 41: Gestion documental',
+  'Proceso 42: Investigacion de mercados',
+  'Proceso 43: Comercializacion y ventas',
+  'Proceso 44: Asuntos judiciales y administrativos',
+  'Proceso 45: Asesoria y apoyo juridico',
+  'Proceso 46: Gestion de riesgos y oportunidades',
+  'Proceso 47: Auditoria de control interno',
+  'Proceso 48: Construccion, adecuacion y mantenimiento de la infraestructura fisica',
+  'Proceso 49: Gestion del servicio de tecnologia',
+  'Proceso 50: Gestion de soluciones TI',
 ];
+
+// VICERRECTORIA / ESCUELAS (10 opciones)
 const VICERRECTORIAS = [
-  'Vicerrectoría Académica',
-  'Vicerrectoría Administrativa',
-  'Vicerrectoría de Investigación',
-  'Facultad de Ingeniería',
-  'Facultad de Ciencias Sociales',
-  'Facultad de Ciencias Económicas',
-  'Facultad de Salud',
+  'Rectoria',
+  'Vicerrectoria Academica',
+  'Vicerrectoria Proyeccion social',
+  'Vicerrectoria Operaciones',
+  'Escuela: Desarrollo Humano y Transformación Social',
+  'Escuela: Futuros de la educacion',
+  'Escuela: Negocios, Emprendimiento y Competitividad Territorial',
+  'Escuela: Creación, Comunicación y Cultura',
+  'Escuela: Ingeniería, Tecnología y Sostenibilidad',
+  'Escuela: Salud y Cuidado Integral',
 ];
+
 const PRIORIDADES = [
   'Alta — Riesgo Crítico',
   'Media — Riesgo Moderado',
@@ -56,16 +170,15 @@ const PRIORIDADES = [
 
 type AIStatus = 'idle' | 'loading' | 'done';
 
-/* ─── Pasos del wizard ─── */
 const STEPS = [
   { id: 'pdi',        label: 'Identificación PDI',  emoji: '🎯' },
   { id: 'unidad',     label: 'Unidad Responsable',   emoji: '🏛️' },
   { id: 'accion',     label: 'Acción de mejora',     emoji: '✦ IA' },
   { id: 'meta',       label: 'Meta',                 emoji: '📌' },
-  { id: 'actividad',  label: 'Actividad',             emoji: '✦ IA' },
-  { id: 'cronograma', label: 'Cronograma',            emoji: '📅' },
-  { id: 'avance',     label: 'Avance',                emoji: '📈' },
-  { id: 'evidencia',  label: 'Evidencia',             emoji: '📎' },
+  { id: 'actividad',  label: 'Actividad',            emoji: '✦ IA' },
+  { id: 'cronograma', label: 'Cronograma',           emoji: '📅' },
+  { id: 'avance',     label: 'Avance',               emoji: '📈' },
+  { id: 'evidencia',  label: 'Evidencia',            emoji: '📎' },
 ];
 
 const slideVariants = {
@@ -83,6 +196,10 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   const [aiSuggestions, setAiSugg]  = useState<Record<string, string>>({});
   const [aiAccepted, setAiAccepted] = useState<Record<string, boolean>>({});
 
+  // Estado para validación de URL
+  const [urlStatus, setUrlStatus] = useState<'idle' | 'loading' | 'valid' | 'invalid'>('idle');
+  const [urlMessage, setUrlMessage] = useState('');
+
   const totalSteps = STEPS.length;
   const progress   = ((step) / (totalSteps - 1)) * 100;
 
@@ -93,12 +210,14 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const set = (field: keyof PlanData, value: string) => {
     setFormData(p => ({ ...p, [field]: value }));
-    if (aiAccepted[field]) setAiAccepted(p => ({ ...p, [field]: false }));
+    if (field === 'evidenciaUrl') {
+      setUrlStatus('idle');
+      setUrlMessage('');
+    }
   };
 
   const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
-  // ─── ARREGLO PRINCIPAL: tipo va en el BODY, no en headers ───
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field];
     if (!val.trim()) return;
@@ -106,18 +225,14 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
     try {
-      // 'ACCION' para accionMejora, 'META' para meta y actividad
       const tipo = field === 'accionMejora' ? 'ACCION' : 'META';
 
       const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // ✅ SIN header 'tipo' — n8n no lo lee bien desde headers personalizados
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mensaje: val,
-          tipo,           // ✅ tipo va aquí, en el body
+          tipo,
           contexto: {
             frentePDI:     formData.frentePDI,
             nivel1:        formData.nivel1,
@@ -141,12 +256,48 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     }
   };
 
+  // Verificar URL de OneDrive
+  const verifyUrl = () => {
+    const url = formData.evidenciaUrl?.trim();
+    if (!url) {
+      setUrlStatus('invalid');
+      setUrlMessage('Por favor ingresa un enlace de OneDrive');
+      return;
+    }
+
+    setUrlStatus('loading');
+    setUrlMessage('');
+
+    const onedrivePattern = /^(https?:\/\/)?(.*\.)?(onedrive\.live\.com|1drv\.ms|sharepoint\.com)\/.*/i;
+    
+    setTimeout(() => {
+      if (onedrivePattern.test(url)) {
+        setUrlStatus('valid');
+        setUrlMessage('✓ Enlace de OneDrive válido');
+      } else {
+        setUrlStatus('invalid');
+        setUrlMessage('✗ El enlace no parece ser de OneDrive. Asegúrate de copiar el enlace correcto.');
+      }
+    }, 500);
+  };
+
+  const openUrl = () => {
+    const url = formData.evidenciaUrl?.trim();
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      window.open(url, '_blank');
+    } else if (url) {
+      window.open('https://' + url, '_blank');
+    }
+  };
+
   const acceptSuggestion = (field: keyof PlanData) => {
     const s = aiSuggestions[field];
     if (!s) return;
     const clean = s.replace(/^.*?:\s*"?/, '').replace(/"?\s*$/, '').trim();
     setFormData(p => ({ ...p, [field]: clean }));
     setAiAccepted(p => ({ ...p, [field]: true }));
+    // Limpiar el estado para que no se muestre la sugerencia después de aceptar
+    setAiStatus(p => ({ ...p, [field]: 'idle' }));
   };
 
   const dismissSuggestion = (field: keyof PlanData) => {
@@ -154,27 +305,31 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
   };
 
-  /* ── Validación simple por paso ── */
+  // Verifica si un campo con IA ya fue verificado (se considera verificado si se presionó el botón)
+  const isAiVerified = (field: keyof PlanData): boolean => {
+    return aiStatus[field] === 'done' || !!aiAccepted[field];
+  };
+
   const canAdvance = (): boolean => {
     const s = STEPS[step].id;
     if (s === 'pdi')       return !!(formData.frentePDI && formData.nivel1 && formData.nivel2 && formData.prioridad);
     if (s === 'unidad')    return !!(formData.vicerrectoria && formData.areaPrograma && formData.cargoResponsable && formData.iniciativa);
-    if (s === 'accion')    return !!formData.accionMejora.trim();
-    if (s === 'meta')      return !!formData.meta.trim();
-    if (s === 'actividad') return !!formData.actividad.trim();
+    // Los campos con IA ahora son OBLIGATORIOS (deben tener texto Y haber sido verificados)
+    if (s === 'accion')    return !!(formData.accionMejora.trim() && isAiVerified('accionMejora'));
+    if (s === 'meta')      return !!(formData.meta.trim() && isAiVerified('meta'));
+    if (s === 'actividad') return !!(formData.actividad.trim() && isAiVerified('actividad'));
     if (s === 'cronograma')return !!(formData.fechaInicio && formData.fechaCierre);
     if (s === 'avance')    return !!formData.avance.trim();
-    if (s === 'evidencia') return !!formData.evidencia.trim();
+    if (s === 'evidencia') return true;
     return true;
   };
 
   const handleSubmit = () => onSubmit(formData);
 
-  /* ── Estilos compartidos ── */
   const inputCls = `w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm
     placeholder:text-white/30 focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
     transition-all hover:border-white/20`;
-  /* ─── Renders por paso ─── */
+
   const renderStep = () => {
     const s = STEPS[step].id;
 
@@ -184,9 +339,9 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
           desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional." />
         <SelectField label="Frente PDI relacionado" value={formData.frentePDI} options={FRENTE_PDI}
           onChange={v => set('frentePDI', v)} />
-        <SelectField label="Nivel 1 de particularización" value={formData.nivel1} options={NIVEL1}
+        <SelectField label="Factor Primario - Macroproceso" value={formData.nivel1} options={NIVEL1}
           onChange={v => set('nivel1', v)} />
-        <SelectField label="Nivel 2 de particularización" value={formData.nivel2} options={NIVEL2}
+        <SelectField label="Factor Secundario - Proceso y Riesgo" value={formData.nivel2} options={NIVEL2}
           onChange={v => set('nivel2', v)} />
         <SelectField label="Prioridad / Nivel de riesgo" value={formData.prioridad} options={PRIORIDADES}
           onChange={v => set('prioridad', v)} />
@@ -197,7 +352,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🏛️" title="Unidad Responsable"
           desc="Define quién lidera y ejecuta este plan de mejora." />
-        <SelectField label="Vicerrectoría / Facultad" value={formData.vicerrectoria} options={VICERRECTORIAS}
+        <SelectField label="Vicerrectoría / Escuelas" value={formData.vicerrectoria} options={VICERRECTORIAS}
           onChange={v => set('vicerrectoria', v)} />
         <TextField label="Área / Programa" value={formData.areaPrograma}
           placeholder="Ej. Ingeniería de Sistemas" onChange={v => set('areaPrograma', v)} cls={inputCls} />
@@ -208,33 +363,49 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
-    /* ── Paso 3: Acción de mejora (CON IA) ── */
+    // Paso 3: Acción de mejora (OBLIGATORIO con IA)
     if (s === 'accion') {
       const field: keyof PlanData = 'accionMejora';
-      const status     = aiStatus[field] || 'idle';
+      const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted   = aiAccepted[field];
+      const accepted = aiAccepted[field];
+      const isVerified = isAiVerified(field);
+      
       return (
         <div className="flex flex-col gap-5">
           <StepIntro emoji="⚡" title="Acción de mejora"
             desc="Describe la acción concreta que se implementará. La IA buscará acciones similares en el PUM y te orientará."
-            ai />
+            ai mandatory />
           <div className="flex flex-col gap-2">
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Describe la acción de mejora..."
               className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
-            <button type="button" onClick={() => verifyWithAI(field)}
-              disabled={status === 'loading' || !formData[field].trim()}
-              className={`self-start flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all mt-1
-                ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                ${accepted
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
-              {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-               accepted             ? <><CheckCircle2 size={13} /> Aceptado</> :
-                                      <><Sparkles size={13} /> Verificar con IA</>}
-            </button>
+            
+            <div className="flex items-center gap-3 mt-1">
+              <button type="button" onClick={() => verifyWithAI(field)}
+                disabled={status === 'loading' || !formData[field].trim()}
+                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                  ${accepted
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
+                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                              <><Sparkles size={13} /> Verificar con IA</>}
+                </button>
+                
+              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
+                </span>
+              )}
+              {isVerified && (
+                <span className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Verificado con IA
+                </span>
+              )}
+            </div>
           </div>
           <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
@@ -242,33 +413,49 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       );
     }
 
-    /* ── Paso 4: Meta (CON IA) ── */
+    // Paso 4: Meta (OBLIGATORIO con IA)
     if (s === 'meta') {
       const field: keyof PlanData = 'meta';
-      const status     = aiStatus[field] || 'idle';
+      const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted   = aiAccepted[field];
+      const accepted = aiAccepted[field];
+      const isVerified = isAiVerified(field);
+      
       return (
         <div className="flex flex-col gap-5">
           <StepIntro emoji="📌" title="Meta"
             desc="Define el resultado esperado de forma medible. La IA buscará metas similares en el PUM para orientarte."
-            ai />
+            ai mandatory />
           <div className="flex flex-col gap-2">
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Define la meta cuantificable..."
               className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
-            <button type="button" onClick={() => verifyWithAI(field)}
-              disabled={status === 'loading' || !formData[field].trim()}
-              className={`self-start flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all mt-1
-                ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                ${accepted
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
-              {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-               accepted             ? <><CheckCircle2 size={13} /> Aceptado</> :
-                                      <><Sparkles size={13} /> Verificar con IA</>}
-            </button>
+            
+            <div className="flex items-center gap-3 mt-1">
+              <button type="button" onClick={() => verifyWithAI(field)}
+                disabled={status === 'loading' || !formData[field].trim()}
+                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                  ${accepted
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
+                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                              <><Sparkles size={13} /> Verificar con IA</>}
+                </button>
+                
+              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
+                </span>
+              )}
+              {isVerified && (
+                <span className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Verificado con IA
+                </span>
+              )}
+            </div>
           </div>
           <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
@@ -276,32 +463,49 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       );
     }
 
-    /* ── Paso 5: Actividad (CON IA) ── */
+    // Paso 5: Actividad (OBLIGATORIO con IA)
     if (s === 'actividad') {
       const field: keyof PlanData = 'actividad';
-      const status     = aiStatus[field] || 'idle';
+      const status = aiStatus[field] || 'idle';
       const suggestion = aiSuggestions[field];
-      const accepted   = aiAccepted[field];
+      const accepted = aiAccepted[field];
+      const isVerified = isAiVerified(field);
+      
       return (
         <div className="flex flex-col gap-5">
           <StepIntro emoji="📋" title="Actividad"
-            desc="Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos." ai />
+            desc="Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos." 
+            ai mandatory />
           <div className="flex flex-col gap-2">
             <textarea rows={4} value={formData[field]}
               onChange={e => set(field, e.target.value)}
               placeholder="Detalla las actividades..."
               className={`${inputCls} resize-none ${accepted ? 'border-emerald-500/40' : ''}`} />
-            <button type="button" onClick={() => verifyWithAI(field)}
-              disabled={status === 'loading' || !formData[field].trim()}
-              className={`self-start flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all mt-1
-                ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                ${accepted
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
-              {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-               accepted             ? <><CheckCircle2 size={13} /> Aceptado</> :
-                                      <><Sparkles size={13} /> Verificar con IA</>}
-            </button>
+            
+            <div className="flex items-center gap-3 mt-1">
+              <button type="button" onClick={() => verifyWithAI(field)}
+                disabled={status === 'loading' || !formData[field].trim()}
+                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                  ${accepted
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
+                   accepted ? <><CheckCircle2 size={13} /> Aceptado</> :
+                              <><Sparkles size={13} /> Verificar con IA</>}
+                </button>
+                
+              {formData[field].trim() && !isVerified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio verificar con IA
+                </span>
+              )}
+              {isVerified && (
+                <span className="text-xs text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Verificado con IA
+                </span>
+              )}
+            </div>
           </div>
           <AIPanel field={field} status={status} suggestion={suggestion} accepted={accepted}
             onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
@@ -348,20 +552,67 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📎" title="Evidencia"
           desc="Indica qué documentos o registros respaldan el avance reportado." />
+        
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Evidencia</span>
-          <textarea rows={4} value={formData.evidencia}
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Descripción de evidencia</span>
+          <textarea rows={3} value={formData.evidencia}
             onChange={e => set('evidencia', e.target.value)}
-            placeholder="Indica el tipo de evidencia..."
+            placeholder="Describe los documentos o registros que respaldan el avance..."
             className={`${inputCls} resize-none`} />
         </label>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Enlace OneDrive</span>
+          <div className="flex gap-2">
+            <input 
+              type="url" 
+              value={formData.evidenciaUrl || ''}
+              onChange={e => set('evidenciaUrl', e.target.value)}
+              placeholder="https://uniminuto-my.sharepoint.com/..."
+              className={`${inputCls} flex-1 ${urlStatus === 'valid' ? 'border-emerald-500/60' : urlStatus === 'invalid' ? 'border-red-500/60' : ''}`}
+            />
+            <button
+              type="button"
+              onClick={verifyUrl}
+              disabled={urlStatus === 'loading'}
+              className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-50"
+            >
+              {urlStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
+            </button>
+            {formData.evidenciaUrl && urlStatus === 'valid' && (
+              <button
+                type="button"
+                onClick={openUrl}
+                className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 border border-white/10 hover:bg-white/10"
+              >
+                <ExternalLink size={16} />
+              </button>
+            )}
+          </div>
+          
+          {urlMessage && (
+            <p className={`text-xs mt-1 ${urlStatus === 'valid' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {urlMessage}
+            </p>
+          )}
+          
+          <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-300/80">
+                📌 <strong>Importante:</strong> Al compartir el enlace, asegúrate de seleccionar la opción 
+                <strong className="text-amber-200"> "Cualquier persona que tenga el enlace puede ver"</strong>.
+                De lo contrario, no podremos acceder a la evidencia.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
 
     return null;
   };
 
-  /* ─── UI ─── */
   return (
     <div className="relative flex flex-col min-h-screen py-10 px-4">
       {onGoHome && (
@@ -443,7 +694,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   );
 }
 
-/* ── Panel de sugerencia IA (componente reutilizable) ── */
 function AIPanel({ field, status, suggestion, accepted, onAccept, onDismiss }: {
   field: keyof PlanData;
   status: AIStatus;
@@ -484,8 +734,7 @@ function AIPanel({ field, status, suggestion, accepted, onAccept, onDismiss }: {
   );
 }
 
-/* ── Sub-componentes ── */
-function StepIntro({ emoji, title, desc, ai }: { emoji: string; title: string; desc: string; ai?: boolean }) {
+function StepIntro({ emoji, title, desc, ai, mandatory }: { emoji: string; title: string; desc: string; ai?: boolean; mandatory?: boolean }) {
   return (
     <div className="mb-2">
       <div className="flex items-center gap-3 mb-2">
@@ -497,6 +746,11 @@ function StepIntro({ emoji, title, desc, ai }: { emoji: string; title: string; d
             <Sparkles size={9} /> IA
           </span>
         )}
+        {mandatory && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+            Obligatorio
+          </span>
+        )}
       </div>
       <p className="text-sm text-white/40 leading-relaxed">{desc}</p>
     </div>
@@ -504,11 +758,11 @@ function StepIntro({ emoji, title, desc, ai }: { emoji: string; title: string; d
 }
 
 function SelectField({ label, value, options, onChange }: {
-  label: string; value: string; options: string[]; onChange: (v: string) => void; cls?: string;
+  label: string; value: string; options: string[]; onChange: (v: string) => void;
 }) {
-  const [open, setOpen]     = useState(false);
+  const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null);
-  const btnRef  = useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

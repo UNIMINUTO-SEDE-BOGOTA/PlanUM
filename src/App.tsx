@@ -22,6 +22,7 @@ export interface PlanData {
   fechaCierre: string;
   avance: string;
   evidencia: string;
+  evidenciaUrl?: string;
 }
 
 function App() {
