@@ -14,9 +14,6 @@ const C = {
   BORDER:           'B0CDD5',
 } as const;
 
-// Helper para forzar tipo de color (soluciona el error de TypeScript)
-const asColor = (color: string): string => color as string;
-
 // ─── Helpers de estilo ────────────────────────────────────────────────────────
 type HAlign = 'left' | 'center' | 'right';
 
