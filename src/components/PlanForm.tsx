@@ -235,12 +235,13 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const setFormField = (field: keyof PlanData, value: string) => {
     setFormData(p => ({ ...p, [field]: value }));
-    // Cuando el usuario edita el texto de IA, se resetea la verificación
-    if (field === 'accionMejora' || field === 'meta' || field === 'actividad') {
-      setAiVerified(p => ({ ...p, [field]: false }));
-      setAiStatus(p => ({ ...p, [field]: 'idle' }));
-      setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
-    }
+    // <--- MODIFICADO: Ya NO se resetea la verificación ni la sugerencia de IA cuando el usuario edita el texto.
+    // Esto permite que el usuario pueda borrar o cambiar el texto libremente sin perder el estado "verificado".
+    // if (field === 'accionMejora' || field === 'meta' || field === 'actividad') {
+    //   setAiVerified(p => ({ ...p, [field]: false }));
+    //   setAiStatus(p => ({ ...p, [field]: 'idle' }));
+    //   setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
+    // }
   };
 
   // Funciones para múltiples enlaces
@@ -298,7 +299,16 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field] as string;
-    if (!val || !val.trim()) return;
+    // <--- MODIFICADO: Ya NO se requiere que el texto esté presente para verificar.
+    // Si está vacío, podemos enviar un mensaje vacío o simplemente marcar como verificado sin llamar al webhook.
+    // Para mantener la funcionalidad, si está vacío, lo marcamos como verificado inmediatamente.
+    if (!val || !val.trim()) {
+      // Si el campo está vacío, simplemente lo marcamos como verificado sin llamar a la API.
+      setAiStatus(p => ({ ...p, [field]: 'done' }));
+      setAiVerified(p => ({ ...p, [field]: true }));
+      setAiSugg(p => ({ ...p, [field]: 'No hay texto para verificar. El campo se ha marcado como válido.' }));
+      return;
+    }
     
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
@@ -358,9 +368,11 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     const s = STEPS[step].id;
     if (s === 'pdi')       return !!(formData.frentePDI && formData.nivel1 && formData.nivel2 && formData.prioridad);
     if (s === 'unidad')    return !!(formData.vicerrectoria && formData.areaPrograma && formData.cargoResponsable && formData.iniciativa);
-    if (s === 'accion')    return !!(formData.accionMejora?.trim() && isAiVerified('accionMejora'));
-    if (s === 'meta')      return !!(formData.meta?.trim() && isAiVerified('meta'));
-    if (s === 'actividad') return !!(formData.actividad?.trim() && isAiVerified('actividad'));
+    // <--- MODIFICADO: Ya NO se valida que el texto tenga contenido (formData.accionMejora?.trim()).
+    // Solo se valida que se haya presionado el botón de verificación (isAiVerified).
+    if (s === 'accion')    return !!(isAiVerified('accionMejora'));
+    if (s === 'meta')      return !!(isAiVerified('meta'));
+    if (s === 'actividad') return !!(isAiVerified('actividad'));
     if (s === 'cronograma')return !!(formData.fechaInicio && formData.fechaCierre);
     if (s === 'avance')    return !!formData.avance?.trim();
     if (s === 'evidencia') return true;
@@ -426,12 +438,14 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <textarea rows={4} value={fieldValue}
               onChange={e => setFormField(field, e.target.value)}
               placeholder="Describe la acción de mejora..."
+              // <--- MODIFICADO: Ya no se aplica borde verde por contenido, solo por verificación.
               className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
             
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               {!verified && (
                 <button type="button" onClick={() => verifyWithAI(field)}
-                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  // <--- MODIFICADO: El botón ya no se deshabilita si el campo está vacío.
+                  disabled={status === 'loading'}
                   className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                     ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
                     bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
@@ -456,9 +470,15 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
                 </button>
               )}
               
-              {fieldValue?.trim() && !verified && status !== 'loading' && (
+              {/* <--- MODIFICADO: Ya no se muestra el mensaje de obligatoriedad por contenido vacío. */}
+              {/* {fieldValue?.trim() && !verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
                   <AlertCircle size={12} /> Obligatorio verificar con IA
+                </span>
+              )} */}
+              {!verified && status !== 'loading' && (
+                <span className="text-xs text-amber-400 flex items-center gap-1">
+                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
                 </span>
               )}
             </div>
@@ -491,7 +511,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               {!verified && (
                 <button type="button" onClick={() => verifyWithAI(field)}
-                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  disabled={status === 'loading'}
                   className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                     ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
                     bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
@@ -516,9 +536,9 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
                 </button>
               )}
               
-              {fieldValue?.trim() && !verified && status !== 'loading' && (
+              {!verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
+                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
                 </span>
               )}
             </div>
@@ -551,7 +571,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               {!verified && (
                 <button type="button" onClick={() => verifyWithAI(field)}
-                  disabled={status === 'loading' || !fieldValue?.trim()}
+                  disabled={status === 'loading'}
                   className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
                     ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
                     bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
@@ -576,9 +596,9 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
                 </button>
               )}
               
-              {fieldValue?.trim() && !verified && status !== 'loading' && (
+              {!verified && status !== 'loading' && (
                 <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
+                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
                 </span>
               )}
             </div>
