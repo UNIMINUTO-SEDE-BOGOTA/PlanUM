@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, ChevronRight, CheckCircle, TrendingUp, Shield } from 'lucide-react';
+import { FileText, ChevronRight, CheckCircle, TrendingUp, Shield, PencilLine } from 'lucide-react';
+import UpdatePlanModal from './UpdatePlanModal';
 
 interface WelcomeScreenProps {
   onStart: () => void;
@@ -7,29 +9,27 @@ interface WelcomeScreenProps {
 
 const features = [
   { icon: CheckCircle, text: 'Registro estructurado por secciones' },
-  { icon: TrendingUp, text: 'Verificación inteligente con IA' },
+  { icon: TrendingUp,  text: 'Verificación inteligente con IA' },
   { icon: Shield,      text: 'Exportación institucional en PDF' },
 ];
 
 export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
+  const [showUpdate, setShowUpdate] = useState(false);
+
   return (
     <div className="relative flex flex-col justify-center min-h-screen py-16 overflow-hidden w-full">
 
+      {/* Modal de actualización */}
+      {showUpdate && <UpdatePlanModal onClose={() => setShowUpdate(false)} />}
+
       {/* ── Fondo geométrico ── */}
       <div className="pointer-events-none select-none absolute inset-0 overflow-hidden">
-        {/* Gradiente base */}
         <div className="absolute inset-0"
           style={{ background: 'radial-gradient(ellipse 80% 60% at 60% 20%, #2e5871 0%, #0d1f29 55%, #050e14 100%)' }} />
-
-        {/* Círculo teal grande esquina sup-der */}
         <div className="absolute -top-32 -right-32 w-[520px] h-[520px] rounded-full opacity-20"
           style={{ background: 'radial-gradient(circle, #008b8b 0%, transparent 70%)' }} />
-
-        {/* Círculo naranja esquina inf-izq */}
         <div className="absolute -bottom-24 -left-24 w-[380px] h-[380px] rounded-full opacity-15"
           style={{ background: 'radial-gradient(circle, #e15e29 0%, transparent 70%)' }} />
-
-        {/* Líneas diagonales decorativas */}
         <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
@@ -38,8 +38,6 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
-
-        {/* Línea diagonal accent */}
         <div className="absolute top-0 right-[28%] w-px h-full opacity-10"
           style={{ background: 'linear-gradient(to bottom, transparent, #008b8b 30%, #d1b742 70%, transparent)' }} />
       </div>
@@ -55,8 +53,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
           className="flex items-center gap-2 self-start"
         >
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#008b8b' }} />
-          <span className="text-xs tracking-[0.22em] uppercase font-semibold"
-            style={{ color: '#008b8b' }}>
+          <span className="text-xs tracking-[0.22em] uppercase font-semibold" style={{ color: '#008b8b' }}>
             Sistema Inteligente del Plan Unico de Mejoras
           </span>
         </motion.div>
@@ -120,13 +117,14 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
           style={{ background: 'linear-gradient(to right, #2e5871, #008b8b40, transparent)' }}
         />
 
-        {/* CTA */}
+        {/* CTAs */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.55 }}
           className="flex flex-col sm:flex-row items-start gap-4"
         >
+          {/* Botón principal: Llenar plan */}
           <button
             onClick={onStart}
             className="group relative flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-white text-base overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
@@ -135,12 +133,26 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
               boxShadow: '0 0 0 1px rgba(225,94,41,0.4), 0 8px 32px rgba(225,94,41,0.3)',
             }}
           >
-            {/* Shimmer hover */}
             <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
               style={{ background: 'linear-gradient(135deg, #f07040 0%, #e15e29 100%)' }} />
             <FileText size={20} className="relative z-10 group-hover:rotate-3 transition-transform duration-300" />
             <span className="relative z-10">Llenar mi plan</span>
             <ChevronRight size={18} className="relative z-10 group-hover:translate-x-1 transition-transform duration-300" />
+          </button>
+
+          {/* Botón secundario: Actualizar por ID */}
+          <button
+            onClick={() => setShowUpdate(true)}
+            className="group flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: 'rgba(0,139,139,0.08)',
+              border: '1px solid rgba(0,139,139,0.35)',
+              color: '#008b8b',
+              boxShadow: '0 4px 20px rgba(0,139,139,0.1)',
+            }}
+          >
+            <PencilLine size={17} className="group-hover:rotate-3 transition-transform duration-300" />
+            Actualizar mi plan
           </button>
 
           {/* Stat decorativa */}

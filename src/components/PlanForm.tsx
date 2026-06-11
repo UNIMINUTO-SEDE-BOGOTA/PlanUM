@@ -32,7 +32,7 @@ const TIPOS_PLAN = [
 
 // AÑO — últimos 5 años y los próximos 2
 const AÑO_ACTUAL = new Date().getFullYear();
-const AÑOS = Array.from({ length: 8 }, (_, i) => String(AÑO_ACTUAL - 0 + i));
+const AÑOS = Array.from({ length: 8 }, (_, i) => String(AÑO_ACTUAL - 4 + i));
 
 // FRENTE PDI numerado del 1 al 8
 const FRENTE_PDI = [
@@ -303,7 +303,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     }
   };
 
-  const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field] as string;
@@ -317,21 +316,27 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
     try {
-      // campo actividad usa tipo 'ACCION' como fallback ya que el n8n solo acepta META | ACCION
       const tipo = field === 'meta' ? 'META' : 'ACCION';
 
-      const res = await fetch(WEBHOOK_URL, {
+      const res = await fetch(import.meta.env.VITE_PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
-          mensaje: val,
-          tipo,
-          contexto: {
-            tipoPlan:      formData.tipoPlan,
-            frentePDI:     formData.frentePDI,
-            nivel1:        formData.nivel1,
-            nivel2:        formData.nivel2,
-            vicerrectoria: formData.vicerrectoria,
+          operation: 'webhook_orientador',
+          table: '',
+          data: {
+            mensaje: val,
+            tipo,
+            contexto: {
+              tipoPlan:      formData.tipoPlan,
+              frentePDI:     formData.frentePDI,
+              nivel1:        formData.nivel1,
+              nivel2:        formData.nivel2,
+              vicerrectoria: formData.vicerrectoria,
+            },
           },
         }),
       });
@@ -339,7 +344,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      setAiSugg(p => ({ ...p, [field]: data.orientacion ?? 'Sin sugerencia disponible.' }));
+      setAiSugg(p => ({ ...p, [field]: data.data?.orientacion ?? 'Sin sugerencia disponible.' }));
       setAiStatus(p => ({ ...p, [field]: 'done' }));
       setAiVerified(p => ({ ...p, [field]: true }));
 
