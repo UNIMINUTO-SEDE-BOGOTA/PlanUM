@@ -7,6 +7,11 @@ import SuccessScreen from './components/SuccessScreen';
 export type AppState = 'splash' | 'welcome' | 'form' | 'success';
 
 export interface PlanData {
+  // Nuevos campos
+  tipoPlan: string;
+  año: string;
+  
+  // Campos existentes
   frentePDI: string;
   nivel1: string;
   nivel2: string;
@@ -15,15 +20,26 @@ export interface PlanData {
   areaPrograma: string;
   cargoResponsable: string;
   iniciativa: string;
+  
+  // Indicadores
+  indicador: string;
+  lineaBase: string;
+  medicion: string;
+  
+  // IA
   accionMejora: string;
   meta: string;
   actividad: string;
+  
+  // Fechas
   fechaInicio: string;
   fechaCierre: string;
+  
+  // Avance y evidencia
   avance: string;
   evidencia: string;
   evidenciaUrl?: string;
-  evidenciaUrls?: string[]; 
+  evidenciaUrls?: string[];
 }
 
 function App() {
