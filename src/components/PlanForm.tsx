@@ -10,12 +10,29 @@ interface PlanFormProps {
 }
 
 const EMPTY_FORM: PlanData = {
+  tipoPlan: '',
+  año: '',
   frentePDI: '', nivel1: '', nivel2: '', prioridad: '',
   vicerrectoria: '', areaPrograma: '', cargoResponsable: '', iniciativa: '',
+  indicador: '', lineaBase: '', medicion: '',
   accionMejora: '', meta: '', actividad: '',
   fechaInicio: '', fechaCierre: '',
   avance: '', evidencia: '', evidenciaUrl: '', evidenciaUrls: [],
 };
+
+// TIPO DE PLAN
+const TIPOS_PLAN = [
+  'Institucional',
+  'Programas',
+  'Sistema de Gestión de Calidad',
+  'Riesgos',
+  'Plan Estratégico',
+  'N/A',
+];
+
+// AÑO — últimos 5 años y los próximos 2
+const AÑO_ACTUAL = new Date().getFullYear();
+const AÑOS = Array.from({ length: 8 }, (_, i) => String(AÑO_ACTUAL - 0 + i));
 
 // FRENTE PDI numerado del 1 al 8
 const FRENTE_PDI = [
@@ -29,7 +46,7 @@ const FRENTE_PDI = [
   '8. Sostenibilidad y ecologia integral',
 ];
 
-// FACTOR PRIMARIO - MACROPROCESO (33 opciones)
+// FACTOR PRIMARIO - MACROPROCESO
 const NIVEL1 = [
   'Institucional 1: Identidad institucional',
   'Institucional 2: Gobierno institucional y transparencia',
@@ -70,7 +87,7 @@ const NIVEL1 = [
   'Macroproceso 13: Gestion de la infraestructura fisica y tecnologica',
 ];
 
-// FACTOR SECUNDARIO - PROCESO Y RIESGO (50 opciones)
+// FACTOR SECUNDARIO - PROCESO Y RIESGO
 const NIVEL2 = [
   'Institucional 1: Identidad institucional',
   'Institucional 2: Gobierno institucional y transparencia',
@@ -148,7 +165,7 @@ const NIVEL2 = [
   'Proceso 50: Gestion de soluciones TI',
 ];
 
-// VICERRECTORIA / ESCUELAS (10 opciones)
+// VICERRECTORIA / ESCUELAS
 const VICERRECTORIAS = [
   'Rectoria',
   'Vicerrectoria Academica',
@@ -180,6 +197,7 @@ interface UrlItem {
 const STEPS = [
   { id: 'pdi',        label: 'Identificación PDI',  emoji: '🎯' },
   { id: 'unidad',     label: 'Unidad Responsable',   emoji: '🏛️' },
+  { id: 'indicadores',label: 'Indicadores',          emoji: '📊' },
   { id: 'accion',     label: 'Acción de mejora',     emoji: '✦ IA' },
   { id: 'meta',       label: 'Meta',                 emoji: '📌' },
   { id: 'actividad',  label: 'Actividad',            emoji: '✦ IA' },
@@ -203,7 +221,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   const [aiSuggestions, setAiSugg]  = useState<Record<string, string>>({});
   const [aiVerified, setAiVerified] = useState<Record<string, boolean>>({});
 
-  // Estado para múltiples enlaces de OneDrive
   const [urls, setUrls] = useState<UrlItem[]>(() => {
     const initialUrls = initialData?.evidenciaUrls || [];
     if (initialUrls.length > 0) {
@@ -235,16 +252,8 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const setFormField = (field: keyof PlanData, value: string) => {
     setFormData(p => ({ ...p, [field]: value }));
-    // <--- MODIFICADO: Ya NO se resetea la verificación ni la sugerencia de IA cuando el usuario edita el texto.
-    // Esto permite que el usuario pueda borrar o cambiar el texto libremente sin perder el estado "verificado".
-    // if (field === 'accionMejora' || field === 'meta' || field === 'actividad') {
-    //   setAiVerified(p => ({ ...p, [field]: false }));
-    //   setAiStatus(p => ({ ...p, [field]: 'idle' }));
-    //   setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
-    // }
   };
 
-  // Funciones para múltiples enlaces
   const addUrlField = () => {
     setUrls(prev => [...prev, {
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${prev.length}`,
@@ -273,9 +282,8 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     ));
 
     const onedrivePattern = /^(https?:\/\/)?(.*\.)?(onedrive\.live\.com|1drv\.ms|sharepoint\.com)\/.*/i;
-    
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     if (onedrivePattern.test(urlItem.value)) {
       setUrls(prev => prev.map(u =>
         u.id === id ? { ...u, status: 'valid', message: '✓ Enlace de OneDrive válido' } : u
@@ -299,21 +307,18 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
   const verifyWithAI = async (field: keyof PlanData) => {
     const val = formData[field] as string;
-    // <--- MODIFICADO: Ya NO se requiere que el texto esté presente para verificar.
-    // Si está vacío, podemos enviar un mensaje vacío o simplemente marcar como verificado sin llamar al webhook.
-    // Para mantener la funcionalidad, si está vacío, lo marcamos como verificado inmediatamente.
     if (!val || !val.trim()) {
-      // Si el campo está vacío, simplemente lo marcamos como verificado sin llamar a la API.
       setAiStatus(p => ({ ...p, [field]: 'done' }));
       setAiVerified(p => ({ ...p, [field]: true }));
       setAiSugg(p => ({ ...p, [field]: 'No hay texto para verificar. El campo se ha marcado como válido.' }));
       return;
     }
-    
+
     setAiStatus(p => ({ ...p, [field]: 'loading' }));
 
     try {
-      const tipo = field === 'accionMejora' ? 'ACCION' : 'META';
+      // campo actividad usa tipo 'ACCION' como fallback ya que el n8n solo acepta META | ACCION
+      const tipo = field === 'meta' ? 'META' : 'ACCION';
 
       const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -322,6 +327,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
           mensaje: val,
           tipo,
           contexto: {
+            tipoPlan:      formData.tipoPlan,
             frentePDI:     formData.frentePDI,
             nivel1:        formData.nivel1,
             nivel2:        formData.nivel2,
@@ -333,7 +339,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-
       setAiSugg(p => ({ ...p, [field]: data.orientacion ?? 'Sin sugerencia disponible.' }));
       setAiStatus(p => ({ ...p, [field]: 'done' }));
       setAiVerified(p => ({ ...p, [field]: true }));
@@ -360,22 +365,19 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     setAiSugg(p => { const n = { ...p }; delete n[field]; return n; });
   };
 
-  const isAiVerified = (field: keyof PlanData): boolean => {
-    return aiVerified[field] === true;
-  };
+  const isAiVerified = (field: keyof PlanData): boolean => aiVerified[field] === true;
 
   const canAdvance = (): boolean => {
     const s = STEPS[step].id;
-    if (s === 'pdi')       return !!(formData.frentePDI && formData.nivel1 && formData.nivel2 && formData.prioridad);
-    if (s === 'unidad')    return !!(formData.vicerrectoria && formData.areaPrograma && formData.cargoResponsable && formData.iniciativa);
-    // <--- MODIFICADO: Ya NO se valida que el texto tenga contenido (formData.accionMejora?.trim()).
-    // Solo se valida que se haya presionado el botón de verificación (isAiVerified).
-    if (s === 'accion')    return !!(isAiVerified('accionMejora'));
-    if (s === 'meta')      return !!(isAiVerified('meta'));
-    if (s === 'actividad') return !!(isAiVerified('actividad'));
-    if (s === 'cronograma')return !!(formData.fechaInicio && formData.fechaCierre);
-    if (s === 'avance')    return !!formData.avance?.trim();
-    if (s === 'evidencia') return true;
+    if (s === 'pdi')        return !!(formData.tipoPlan && formData.año && formData.frentePDI && formData.nivel1 && formData.nivel2 && formData.prioridad);
+    if (s === 'unidad')     return !!(formData.vicerrectoria && formData.areaPrograma && formData.cargoResponsable && formData.iniciativa);
+    if (s === 'indicadores')return !!(formData.indicador && formData.lineaBase && formData.medicion);
+    if (s === 'accion')     return !!(isAiVerified('accionMejora'));
+    if (s === 'meta')       return !!(isAiVerified('meta'));
+    if (s === 'actividad')  return !!(isAiVerified('actividad'));
+    if (s === 'cronograma') return !!(formData.fechaInicio && formData.fechaCierre);
+    if (s === 'avance')     return !!formData.avance?.trim();
+    if (s === 'evidencia')  return true;
     return true;
   };
 
@@ -388,13 +390,88 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     placeholder:text-white/30 focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
     transition-all hover:border-white/20`;
 
+  const renderAIField = (field: keyof PlanData, emoji: string, title: string, desc: string, placeholder: string) => {
+    const status     = aiStatus[field] || 'idle';
+    const suggestion = aiSuggestions[field];
+    const verified   = isAiVerified(field);
+    const fieldValue = formData[field] as string;
+
+    return (
+      <div className="flex flex-col gap-5">
+        <StepIntro emoji={emoji} title={title} desc={desc} ai mandatory />
+        <div className="flex flex-col gap-2">
+          <textarea
+            rows={4}
+            value={fieldValue}
+            onChange={e => setFormField(field, e.target.value)}
+            placeholder={placeholder}
+            className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`}
+          />
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {!verified && (
+              <button
+                type="button"
+                onClick={() => verifyWithAI(field)}
+                disabled={status === 'loading'}
+                className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
+                  ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
+                  bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
+                {status === 'loading'
+                  ? <><Loader2 size={13} className="animate-spin" /> Verificando...</>
+                  : <><Sparkles size={13} /> Verificar con IA</>}
+              </button>
+            )}
+            {verified && (
+              <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <CheckCircle2 size={13} /> Verificado con IA
+              </span>
+            )}
+            {verified && status !== 'loading' && (
+              <button
+                type="button"
+                onClick={() => verifyWithAI(field)}
+                className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                <RefreshCw size={12} /> Nueva consulta
+              </button>
+            )}
+            {!verified && status !== 'loading' && (
+              <span className="text-xs text-amber-400 flex items-center gap-1">
+                <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
+              </span>
+            )}
+          </div>
+        </div>
+        <AIPanel field={field} status={status} suggestion={suggestion}
+          onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
+      </div>
+    );
+  };
+
   const renderStep = () => {
     const s = STEPS[step].id;
 
+    // ── PASO 1: Identificación PDI ──────────────────────────────
     if (s === 'pdi') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🎯" title="Identificación PDI"
           desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional." />
+
+        {/* NUEVO: Tipo de plan — primero */}
+        <SelectField
+          label="Tipo de plan"
+          value={formData.tipoPlan}
+          options={TIPOS_PLAN}
+          onChange={v => setFormField('tipoPlan', v)}
+        />
+
+        {/* NUEVO: Año */}
+        <SelectField
+          label="Año"
+          value={formData.año}
+          options={AÑOS}
+          onChange={v => setFormField('año', v)}
+        />
+
         <SelectField label="Frente PDI relacionado" value={formData.frentePDI} options={FRENTE_PDI}
           onChange={v => setFormField('frentePDI', v)} />
         <SelectField label="Factor Primario - Macroproceso" value={formData.nivel1} options={NIVEL1}
@@ -406,6 +483,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
+    // ── PASO 2: Unidad Responsable ──────────────────────────────
     if (s === 'unidad') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🏛️" title="Unidad Responsable"
@@ -421,194 +499,50 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
-    // Paso 3: Acción de mejora
-    if (s === 'accion') {
-      const field: keyof PlanData = 'accionMejora';
-      const status = aiStatus[field] || 'idle';
-      const suggestion = aiSuggestions[field];
-      const verified = isAiVerified(field);
-      const fieldValue = formData[field] as string;
-      
-      return (
-        <div className="flex flex-col gap-5">
-          <StepIntro emoji="⚡" title="Acción de mejora"
-            desc="Describe la acción concreta que se implementará. La IA buscará acciones similares en el PUM y te orientará."
-            ai mandatory />
-          <div className="flex flex-col gap-2">
-            <textarea rows={4} value={fieldValue}
-              onChange={e => setFormField(field, e.target.value)}
-              placeholder="Describe la acción de mejora..."
-              // <--- MODIFICADO: Ya no se aplica borde verde por contenido, solo por verificación.
-              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
-            
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {!verified && (
-                <button type="button" onClick={() => verifyWithAI(field)}
-                  // <--- MODIFICADO: El botón ya no se deshabilita si el campo está vacío.
-                  disabled={status === 'loading'}
-                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
-                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                                           <><Sparkles size={13} /> Verificar con IA</>}
-                </button>
-              )}
-              
-              {verified && (
-                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 size={13} /> Verificado con IA
-                </span>
-              )}
-              
-              {verified && status !== 'loading' && (
-                <button
-                  type="button"
-                  onClick={() => verifyWithAI(field)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                >
-                  <RefreshCw size={12} /> Nueva consulta
-                </button>
-              )}
-              
-              {/* <--- MODIFICADO: Ya no se muestra el mensaje de obligatoriedad por contenido vacío. */}
-              {/* {fieldValue?.trim() && !verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio verificar con IA
-                </span>
-              )} */}
-              {!verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
-                </span>
-              )}
-            </div>
-          </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} 
-            onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
-        </div>
-      );
-    }
+    // ── PASO 3 (NUEVO): Indicadores ─────────────────────────────
+    if (s === 'indicadores') return (
+      <div className="flex flex-col gap-5">
+        <StepIntro emoji="📊" title="Indicadores"
+          desc="Define cómo se medirá el avance y el resultado del plan." />
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Indicador</span>
+          <textarea
+            rows={3}
+            value={formData.indicador}
+            onChange={e => setFormField('indicador', e.target.value)}
+            placeholder="Ej. Porcentaje de estudiantes que aprueban el primer semestre"
+            className={`${inputCls} resize-none`}
+          />
+        </label>
+        <TextField label="Línea base" value={formData.lineaBase}
+          placeholder="Ej. 62% (dato del periodo anterior)" onChange={v => setFormField('lineaBase', v)} cls={inputCls} />
+        <TextField label="Medición" value={formData.medicion}
+          placeholder="Ej. Semestral / Anual / Trimestral" onChange={v => setFormField('medicion', v)} cls={inputCls} />
+      </div>
+    );
 
-    // Paso 4: Meta
-    if (s === 'meta') {
-      const field: keyof PlanData = 'meta';
-      const status = aiStatus[field] || 'idle';
-      const suggestion = aiSuggestions[field];
-      const verified = isAiVerified(field);
-      const fieldValue = formData[field] as string;
-      
-      return (
-        <div className="flex flex-col gap-5">
-          <StepIntro emoji="📌" title="Meta"
-            desc="Define el resultado esperado de forma medible. La IA buscará metas similares en el PUM para orientarte."
-            ai mandatory />
-          <div className="flex flex-col gap-2">
-            <textarea rows={4} value={fieldValue}
-              onChange={e => setFormField(field, e.target.value)}
-              placeholder="Define la meta cuantificable..."
-              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
-            
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {!verified && (
-                <button type="button" onClick={() => verifyWithAI(field)}
-                  disabled={status === 'loading'}
-                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
-                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                                           <><Sparkles size={13} /> Verificar con IA</>}
-                </button>
-              )}
-              
-              {verified && (
-                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 size={13} /> Verificado con IA
-                </span>
-              )}
-              
-              {verified && status !== 'loading' && (
-                <button
-                  type="button"
-                  onClick={() => verifyWithAI(field)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                >
-                  <RefreshCw size={12} /> Nueva consulta
-                </button>
-              )}
-              
-              {!verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
-                </span>
-              )}
-            </div>
-          </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} 
-            onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
-        </div>
-      );
-    }
+    // ── PASO 4: Acción de mejora (IA) ───────────────────────────
+    if (s === 'accion') return renderAIField(
+      'accionMejora', '⚡', 'Acción de mejora',
+      'Describe la acción concreta que se implementará. La IA buscará acciones similares en el PUM y te orientará.',
+      'Describe la acción de mejora...'
+    );
 
-    // Paso 5: Actividad
-    if (s === 'actividad') {
-      const field: keyof PlanData = 'actividad';
-      const status = aiStatus[field] || 'idle';
-      const suggestion = aiSuggestions[field];
-      const verified = isAiVerified(field);
-      const fieldValue = formData[field] as string;
-      
-      return (
-        <div className="flex flex-col gap-5">
-          <StepIntro emoji="📋" title="Actividad"
-            desc="Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos." 
-            ai mandatory />
-          <div className="flex flex-col gap-2">
-            <textarea rows={4} value={fieldValue}
-              onChange={e => setFormField(field, e.target.value)}
-              placeholder="Detalla las actividades..."
-              className={`${inputCls} resize-none ${verified ? 'border-emerald-500/40' : ''}`} />
-            
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              {!verified && (
-                <button type="button" onClick={() => verifyWithAI(field)}
-                  disabled={status === 'loading'}
-                  className={`flex items-center gap-2 text-xs px-4 py-2 rounded-lg font-medium transition-all
-                    ${status === 'loading' ? 'opacity-60 cursor-wait' : ''}
-                    bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-30 disabled:cursor-not-allowed`}>
-                  {status === 'loading' ? <><Loader2 size={13} className="animate-spin" /> Verificando...</> :
-                                           <><Sparkles size={13} /> Verificar con IA</>}
-                </button>
-              )}
-              
-              {verified && (
-                <span className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 size={13} /> Verificado con IA
-                </span>
-              )}
-              
-              {verified && status !== 'loading' && (
-                <button
-                  type="button"
-                  onClick={() => verifyWithAI(field)}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                >
-                  <RefreshCw size={12} /> Nueva consulta
-                </button>
-              )}
-              
-              {!verified && status !== 'loading' && (
-                <span className="text-xs text-amber-400 flex items-center gap-1">
-                  <AlertCircle size={12} /> Obligatorio presionar 'Verificar con IA'
-                </span>
-              )}
-            </div>
-          </div>
-          <AIPanel field={field} status={status} suggestion={suggestion} 
-            onAccept={acceptSuggestion} onDismiss={dismissSuggestion} />
-        </div>
-      );
-    }
+    // ── PASO 5: Meta (IA) ───────────────────────────────────────
+    if (s === 'meta') return renderAIField(
+      'meta', '📌', 'Meta',
+      'Define el resultado esperado de forma medible. La IA buscará metas similares en el PUM para orientarte.',
+      'Define la meta cuantificable...'
+    );
 
+    // ── PASO 6: Actividad (IA) ──────────────────────────────────
+    if (s === 'actividad') return renderAIField(
+      'actividad', '📋', 'Actividad',
+      'Detalla las actividades específicas. La IA te ayudará a estructurarlas por hitos.',
+      'Detalla las actividades...'
+    );
+
+    // ── PASO 7: Cronograma ──────────────────────────────────────
     if (s === 'cronograma') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📅" title="Cronograma"
@@ -630,6 +564,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
+    // ── PASO 8: Avance ──────────────────────────────────────────
     if (s === 'avance') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📈" title="Avance"
@@ -644,11 +579,12 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       </div>
     );
 
+    // ── PASO 9: Evidencia ───────────────────────────────────────
     if (s === 'evidencia') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📎" title="Evidencia"
           desc="Indica qué documentos o registros respaldan el avance reportado." />
-        
+
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Descripción de evidencia</span>
           <textarea rows={3} value={formData.evidencia}
@@ -660,22 +596,16 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs tracking-widest uppercase text-white/40 font-medium">Enlaces OneDrive</span>
-            <button
-              type="button"
-              onClick={addUrlField}
-              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 transition-all"
-            >
-              <Plus size={12} />
-              Agregar enlace
+            <button type="button" onClick={addUrlField}
+              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 transition-all">
+              <Plus size={12} /> Agregar enlace
             </button>
           </div>
-          
+
           {urls.map((urlItem) => (
             <div key={urlItem.id} className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
               <div className="flex gap-2">
-                <input 
-                  type="url" 
-                  value={urlItem.value}
+                <input type="url" value={urlItem.value}
                   onChange={e => updateUrlValue(urlItem.id, e.target.value)}
                   placeholder="https://uniminuto-my.sharepoint.com/..."
                   className={`flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white text-sm
@@ -683,34 +613,24 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
                     transition-all hover:border-white/20
                     ${urlItem.status === 'valid' ? 'border-emerald-500/60' : urlItem.status === 'invalid' ? 'border-red-500/60' : 'border-white/10'}`}
                 />
-                <button
-                  type="button"
-                  onClick={() => verifySingleUrl(urlItem.id)}
+                <button type="button" onClick={() => verifySingleUrl(urlItem.id)}
                   disabled={urlItem.status === 'loading' || !urlItem.value.trim()}
-                  className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-50"
-                >
+                  className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-[#008b8b]/10 text-[#008b8b] border border-[#008b8b]/30 hover:bg-[#008b8b]/20 disabled:opacity-50">
                   {urlItem.status === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
                 </button>
                 {urlItem.value && urlItem.status === 'valid' && (
-                  <button
-                    type="button"
-                    onClick={() => openUrl(urlItem.value)}
-                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 border border-white/10 hover:bg-white/10"
-                  >
+                  <button type="button" onClick={() => openUrl(urlItem.value)}
+                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-white/5 text-white/70 border border-white/10 hover:bg-white/10">
                     <ExternalLink size={16} />
                   </button>
                 )}
                 {urls.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeUrlField(urlItem.id)}
-                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20"
-                  >
+                  <button type="button" onClick={() => removeUrlField(urlItem.id)}
+                    className="px-4 py-3 rounded-xl text-sm font-medium transition-all bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20">
                     <X size={16} />
                   </button>
                 )}
               </div>
-              
               {urlItem.message && (
                 <p className={`text-xs mt-1 ${urlItem.status === 'valid' ? 'text-emerald-400' : 'text-red-400'}`}>
                   {urlItem.message}
@@ -718,12 +638,12 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
               )}
             </div>
           ))}
-          
+
           <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <div className="flex items-start gap-2">
               <AlertCircle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-amber-300/80">
-                📌 <strong>Importante:</strong> Al compartir el enlace, asegúrate de seleccionar la opción 
+                📌 <strong>Importante:</strong> Al compartir el enlace, asegúrate de seleccionar la opción
                 <strong className="text-amber-200"> "Cualquier persona que tenga el enlace puede ver"</strong>.
                 De lo contrario, no podremos acceder a la evidencia.
               </p>
@@ -856,7 +776,9 @@ function AIPanel({ field, status, suggestion, onAccept, onDismiss }: {
   );
 }
 
-function StepIntro({ emoji, title, desc, ai, mandatory }: { emoji: string; title: string; desc: string; ai?: boolean; mandatory?: boolean }) {
+function StepIntro({ emoji, title, desc, ai, mandatory }: {
+  emoji: string; title: string; desc: string; ai?: boolean; mandatory?: boolean;
+}) {
   return (
     <div className="mb-2">
       <div className="flex items-center gap-3 mb-2">
