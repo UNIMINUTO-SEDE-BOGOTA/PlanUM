@@ -5,6 +5,7 @@ import { exportToExcel } from '../utils/exportToExcel';
 
 interface SuccessScreenProps {
   data: PlanData;
+  planId?: number | null; 
   onBack: () => void;
   onNew: () => void;
 }

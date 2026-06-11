@@ -7,6 +7,7 @@ interface PlanFormProps {
   onSubmit: (data: PlanData) => void;
   initialData?: PlanData | null;
   onGoHome?: () => void;
+  saving?: boolean;
 }
 
 const EMPTY_FORM: PlanData = {
