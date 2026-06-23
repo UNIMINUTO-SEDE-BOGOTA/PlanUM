@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Loader2, CheckCircle2, AlertCircle, Save } from 'lucide-react';
 
@@ -30,6 +30,28 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
   const [error, setError]       = useState<string | null>(null);
   const [plan, setPlan]         = useState<PlanRecord | null>(null);
   const [medicion, setMedicion] = useState('');
+
+  // ─── Estado para el tema ───
+  const [theme, setTheme] = useState<'dark' | 'light'>(
+    () => (document.documentElement.getAttribute('data-theme') as 'dark' | 'light') || 'dark'
+  );
+
+  // ─── Escuchar cambios de tema ───
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const newTheme = document.documentElement.getAttribute('data-theme') as 'dark' | 'light';
+      if (newTheme && newTheme !== theme) {
+        setTheme(newTheme);
+      }
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    
+    return () => observer.disconnect();
+  }, [theme]);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -95,9 +117,43 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
     }
   };
 
-  const inputCls = `w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm
-    placeholder:text-white/30 focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
-    transition-all hover:border-white/20`;
+  const isLight = theme === 'light';
+
+  // ─── Clases dinámicas según tema ───
+  const inputCls = `w-full rounded-xl px-4 py-3 text-sm transition-all
+    focus:outline-none focus:border-[#008b8b]/60 focus:ring-1 focus:ring-[#008b8b]/30
+    ${isLight
+      ? 'warm-input text-[#1a100a] placeholder:text-[rgba(26,16,10,0.35)]'
+      : 'bg-white/5 border border-white/10 text-white placeholder:text-white/30'
+    }`;
+
+  const modalBg = isLight 
+    ? 'rgba(255,255,255,0.92)' 
+    : 'rgba(11, 22, 31, 0.98)';
+
+  const modalBorder = isLight
+    ? '1px solid rgba(0,139,139,0.15)'
+    : '1px solid rgba(0,139,139,0.35)';
+
+  const headerBorder = isLight
+    ? 'border-b border-[rgba(0,0,0,0.06)]'
+    : 'border-b border-white/10';
+
+  const textPrimary = isLight ? '#1a100a' : '#ffffff';
+  const textSecondary = isLight ? 'rgba(26,16,10,0.6)' : 'rgba(255,255,255,0.4)';
+  const textMuted = isLight ? 'rgba(26,16,10,0.35)' : 'rgba(255,255,255,0.3)';
+
+  const cardBg = isLight 
+    ? 'bg-[rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]' 
+    : 'bg-white/5 border border-white/10';
+
+  const closeBtnHover = isLight
+    ? 'hover:bg-[rgba(0,0,0,0.04)]'
+    : 'hover:bg-white/10';
+
+  const backBtnBg = isLight
+    ? 'bg-[rgba(0,0,0,0.03)] text-[rgba(26,16,10,0.5)] border border-[rgba(0,0,0,0.06)] hover:text-[#1a100a] hover:bg-[rgba(0,0,0,0.06)]'
+    : 'bg-white/5 text-white/50 border border-white/10 hover:text-white hover:bg-white/10';
 
   return (
     <AnimatePresence>
@@ -117,23 +173,31 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="w-full max-w-lg rounded-2xl flex flex-col"
             style={{
-              background: 'rgba(11, 22, 31, 0.98)',
-              border: '1px solid rgba(0,139,139,0.35)',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+              background: modalBg,
+              border: modalBorder,
+              boxShadow: isLight
+                ? '0 24px 60px rgba(0,0,0,0.10)'
+                : '0 24px 60px rgba(0,0,0,0.6)',
+              backdropFilter: isLight ? 'blur(20px)' : 'none',
             }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <div className={`flex items-center justify-between px-6 py-4 ${headerBorder}`}>
               <div>
-                <h2 className="text-base font-bold text-white">Actualizar plan de mejora</h2>
-                <p className="text-xs text-white/40 mt-0.5">
+                <h2 className="text-base font-bold" style={{ color: textPrimary }}>
+                  Actualizar plan de mejora
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: textSecondary }}>
                   {step === 'search' ? 'Ingresa el número de tu plan para buscarlo'
                     : step === 'edit' ? `Plan #${plan?.id} encontrado`
                     : 'Plan actualizado exitosamente'}
                 </p>
               </div>
-              <button onClick={onClose}
-                className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all">
+              <button 
+                onClick={onClose}
+                className={`p-2 rounded-lg transition-all ${closeBtnHover}`}
+                style={{ color: textMuted }}
+              >
                 <X size={16} />
               </button>
             </div>
@@ -144,7 +208,7 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
               {step === 'search' && (
                 <>
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs tracking-widest uppercase text-white/40 font-medium">
+                    <label className="text-xs tracking-widest uppercase font-medium" style={{ color: textMuted }}>
                       Número de plan
                     </label>
                     <div className="flex gap-2">
@@ -192,8 +256,8 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
               {/* ── STEP: EDIT ── */}
               {step === 'edit' && plan && (
                 <>
-                  <div className="flex flex-col gap-2 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <p className="text-xs tracking-widest uppercase text-white/40 font-medium mb-1">
+                  <div className={`flex flex-col gap-2 p-4 rounded-xl ${cardBg}`}>
+                    <p className="text-xs tracking-widest uppercase font-medium mb-1" style={{ color: textMuted }}>
                       Información del plan
                     </p>
                     {[
@@ -204,8 +268,10 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
                       { label: 'Meta',              value: plan['Meta'] },
                     ].map(({ label, value }) => value ? (
                       <div key={label} className="flex flex-col gap-0.5">
-                        <span className="text-[10px] uppercase tracking-wider text-white/30">{label}</span>
-                        <span className="text-xs text-white/70 leading-relaxed">{value}</span>
+                        <span className="text-[10px] uppercase tracking-wider" style={{ color: textMuted }}>{label}</span>
+                        <span className="text-xs leading-relaxed" style={{ color: isLight ? 'rgba(26,16,10,0.8)' : 'rgba(255,255,255,0.7)' }}>
+                          {value}
+                        </span>
                       </div>
                     ) : null)}
                   </div>
@@ -233,8 +299,7 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
                   <div className="flex gap-3">
                     <button
                       onClick={() => { setStep('search'); setError(null); }}
-                      className="flex-1 py-3 rounded-xl text-sm font-medium transition-all
-                        bg-white/5 text-white/50 border border-white/10 hover:text-white hover:bg-white/10"
+                      className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${backBtnBg}`}
                     >
                       Volver
                     </button>
@@ -264,9 +329,9 @@ export default function UpdatePlanModal({ onClose }: UpdatePlanModalProps) {
                     <CheckCircle2 size={32} style={{ color: '#008b8b' }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">¡Medición actualizada!</h3>
-                    <p className="text-sm text-white/50 mt-1">
-                      El plan <span className="text-white font-semibold">#{plan?.id}</span> fue actualizado correctamente.
+                    <h3 className="text-lg font-bold" style={{ color: textPrimary }}>¡Medición actualizada!</h3>
+                    <p className="text-sm mt-1" style={{ color: textSecondary }}>
+                      El plan <span className="font-semibold" style={{ color: textPrimary }}>#{plan?.id}</span> fue actualizado correctamente.
                     </p>
                   </div>
                   <button
