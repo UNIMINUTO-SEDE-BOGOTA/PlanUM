@@ -425,7 +425,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
 
     return (
       <div className="flex flex-col gap-5">
-        <StepIntro emoji={emoji} title={title} desc={desc} ai mandatory theme={theme} />
+        <StepIntro emoji={emoji} title={title} desc={desc} ai mandatory />
         <div className="flex flex-col gap-2">
           <textarea
             rows={4}
@@ -485,7 +485,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'pdi') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🎯" title="Identificación PDI"
-          desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional." theme={theme} />
+          desc="Ubica tu plan dentro del marco del Plan de Desarrollo Institucional." />
         <SelectField
           label="Tipo de plan"
           value={formData.tipoPlan}
@@ -514,7 +514,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'unidad') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="🏛️" title="Unidad Responsable"
-          desc="Define quién lidera y ejecuta este plan de mejora." theme={theme} />
+          desc="Define quién lidera y ejecuta este plan de mejora." />
         <SelectField label="Vicerrectoría / Escuelas" value={formData.vicerrectoria} options={VICERRECTORIAS}
           onChange={v => setFormField('vicerrectoria', v)} theme={theme} />
         <TextField 
@@ -544,7 +544,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'indicadores') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📊" title="Indicadores"
-          desc="Define cómo se medirá el avance y el resultado del plan." theme={theme} />
+          desc="Define cómo se medirá el avance y el resultado del plan." />
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>Indicador</span>
           <textarea
@@ -593,7 +593,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'cronograma') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📅" title="Cronograma"
-          desc="Define el período de ejecución del plan de mejora." theme={theme} />
+          desc="Define el período de ejecución del plan de mejora." />
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>Fecha de inicio</span>
@@ -620,7 +620,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'avance') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📈" title="Avance"
-          desc="Reporta el estado actual del plan incluyendo porcentaje de cumplimiento y obstáculos encontrados." theme={theme} />
+          desc="Reporta el estado actual del plan incluyendo porcentaje de cumplimiento y obstáculos encontrados." />
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>Avance</span>
           <textarea 
@@ -637,7 +637,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     if (s === 'evidencia') return (
       <div className="flex flex-col gap-5">
         <StepIntro emoji="📎" title="Evidencia"
-          desc="Indica qué documentos o registros respaldan el avance reportado." theme={theme} />
+          desc="Indica qué documentos o registros respaldan el avance reportado." />
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>Descripción de evidencia</span>
@@ -886,13 +886,12 @@ function AIPanel({ field, status, suggestion, onAccept, onDismiss }: {
   );
 }
 
-function StepIntro({ emoji, title, desc, ai, mandatory, theme }: {
+function StepIntro({ emoji, title, desc, ai, mandatory }: {
   emoji: string; 
   title: string; 
   desc: string; 
   ai?: boolean; 
   mandatory?: boolean;
-  theme?: 'dark' | 'light';
 }) {
   return (
     <div className="mb-2">

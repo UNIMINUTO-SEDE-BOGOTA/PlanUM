@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, ChevronRight, CheckCircle, TrendingUp, Shield, PencilLine, Sparkles, Zap } from 'lucide-react';
+import { FileText, ChevronRight, CheckCircle, TrendingUp, Shield, PencilLine, Sparkles } from 'lucide-react';
 import UpdatePlanModal from './UpdatePlanModal';
 
 interface WelcomeScreenProps {
