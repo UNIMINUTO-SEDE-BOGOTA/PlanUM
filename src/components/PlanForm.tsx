@@ -700,10 +700,10 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
             className="z-[9999]"
             style={{
               position: 'fixed',
-              top: searchRef.current ? searchRef.current.getBoundingClientRect().bottom + 6 : 'auto',
-              left: searchRef.current ? searchRef.current.getBoundingClientRect().left : 'auto',
-              width: searchRef.current ? searchRef.current.getBoundingClientRect().width : 'auto',
-              maxWidth: searchRef.current ? searchRef.current.getBoundingClientRect().width : 'auto',
+              top: menuPosition.top,
+              left: menuPosition.left,
+              width: menuPosition.width,
+              maxWidth: menuPosition.width,
             }}
           >
             <div className="rounded-xl overflow-hidden"
