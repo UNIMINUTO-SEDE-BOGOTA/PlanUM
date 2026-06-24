@@ -1,5 +1,4 @@
-// services/searchService.ts - Usando la Edge Function existente
-import { supabase } from '../lib/supabase';
+// services/searchService.ts
 
 const PROXY_URL = import.meta.env.VITE_PROXY_URL as string;
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;

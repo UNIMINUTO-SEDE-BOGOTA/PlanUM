@@ -229,6 +229,7 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
 
   const [urls, setUrls] = useState<UrlItem[]>(() => {
     const initialUrls = initialData?.evidenciaUrls || [];
@@ -281,6 +282,20 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ─── Actualizar posición del menú ───
+  useEffect(() => {
+    if (searchSuggestions.length > 0 || showSearchResults || isSearching) {
+      if (searchRef.current) {
+        const rect = searchRef.current.getBoundingClientRect();
+        setMenuPosition({
+          top: rect.bottom + 6,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+    }
+  }, [searchSuggestions, showSearchResults, isSearching, searchQuery]);
+
   const totalSteps = STEPS.length;
   const progress   = ((step) / (totalSteps - 1)) * 100;
 
@@ -313,27 +328,6 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
       setShowSearchResults(false);
     } finally {
       setIsSearching(false);
-    }
-  };
-
-  const handleSearchChange = async (value: string) => {
-    setSearchQuery(value);
-    setFormData(prev => ({ ...prev, indicador: value }));
-    
-    if (value.trim().length >= 2) {
-      const suggestions = await getSearchSuggestions(value);
-      setSearchSuggestions(suggestions);
-      setShowSearchResults(false);
-    } else {
-      setSearchSuggestions([]);
-      setSearchResults([]);
-      setShowSearchResults(false);
-    }
-    
-    if (value.trim().length === 0) {
-      setShowSearchResults(false);
-      setSearchResults([]);
-      setSearchSuggestions([]);
     }
   };
 
@@ -624,225 +618,225 @@ export default function PlanForm({ onSubmit, initialData, onGoHome }: PlanFormPr
     );
 
     if (s === 'indicadores') return (
-  <div className="flex flex-col gap-5">
-    <StepIntro emoji="📊" title="Indicador"
-      desc="Busca un indicador existente en la base de datos o escribe el tuyo propio." />
+      <div className="flex flex-col gap-5">
+        <StepIntro emoji="📊" title="Indicador"
+          desc="Busca un indicador existente en la base de datos o escribe el tuyo propio." />
 
-    <div className="flex flex-col gap-4">
-      {/* Campo de búsqueda/indicador unificado */}
-      <div ref={searchRef} className="relative">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>
-            Indicador
-          </span>
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery || formData.indicador}
-              onChange={async (e) => {
-                const value = e.target.value;
-                setSearchQuery(value);
-                setFormData(prev => ({ ...prev, indicador: value }));
-                
-                if (value.trim().length >= 2) {
-                  const suggestions = await getSearchSuggestions(value);
-                  setSearchSuggestions(suggestions);
-                  setShowSearchResults(false);
-                } else {
-                  setSearchSuggestions([]);
-                  setSearchResults([]);
-                  setShowSearchResults(false);
-                }
-                
-                if (value.trim().length === 0) {
-                  setShowSearchResults(false);
-                  setSearchResults([]);
-                  setSearchSuggestions([]);
-                }
-              }}
-              onKeyDown={async (e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (searchQuery.trim()) {
-                    setSearchSuggestions([]);
-                    await handleSearch();
-                  }
-                }
-                if (e.key === 'Escape') {
-                  setShowSearchResults(false);
-                  setSearchSuggestions([]);
-                  setSearchResults([]);
-                }
-              }}
-              placeholder="Buscar o escribir indicador..."
-              className={`${inputCls} pl-10 pr-10`}
-            />
-            <Search 
-              size={18} 
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--text-muted)' }}
-            />
-            {(searchQuery || formData.indicador) && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-                type="button"
+        <div className="flex flex-col gap-4">
+          {/* Campo de búsqueda/indicador unificado */}
+          <div ref={searchRef} className="relative">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs tracking-widest uppercase font-medium" style={{ color: 'var(--text-muted)' }}>
+                Indicador
+              </span>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery || formData.indicador}
+                  onChange={async (e) => {
+                    const value = e.target.value;
+                    setSearchQuery(value);
+                    setFormData(prev => ({ ...prev, indicador: value }));
+                    
+                    if (value.trim().length >= 2) {
+                      const suggestions = await getSearchSuggestions(value);
+                      setSearchSuggestions(suggestions);
+                      setShowSearchResults(false);
+                    } else {
+                      setSearchSuggestions([]);
+                      setSearchResults([]);
+                      setShowSearchResults(false);
+                    }
+                    
+                    if (value.trim().length === 0) {
+                      setShowSearchResults(false);
+                      setSearchResults([]);
+                      setSearchSuggestions([]);
+                    }
+                  }}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (searchQuery.trim()) {
+                        setSearchSuggestions([]);
+                        await handleSearch();
+                      }
+                    }
+                    if (e.key === 'Escape') {
+                      setShowSearchResults(false);
+                      setSearchSuggestions([]);
+                      setSearchResults([]);
+                    }
+                  }}
+                  placeholder="Buscar o escribir indicador..."
+                  className={`${inputCls} pl-10 pr-10`}
+                />
+                <Search 
+                  size={18} 
+                  className="absolute left-3 top-1/2 -translate-y-1/2"
+                  style={{ color: 'var(--text-muted)' }}
+                />
+                {(searchQuery || formData.indicador) && (
+                  <button
+                    onClick={clearSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                    type="button"
+                  >
+                    <X size={16} style={{ color: 'var(--text-muted)' }} />
+                  </button>
+                )}
+              </div>
+            </label>
+
+            {/* Contenedor de resultados con position: fixed */}
+            {(searchSuggestions.length > 0 || (showSearchResults && searchResults.length > 0) || isSearching) && (
+              <div 
+                className="z-[9999]"
+                style={{
+                  position: 'fixed',
+                  top: menuPosition.top,
+                  left: menuPosition.left,
+                  width: menuPosition.width,
+                  maxWidth: menuPosition.width,
+                }}
               >
-                <X size={16} style={{ color: 'var(--text-muted)' }} />
-              </button>
-            )}
-          </div>
-        </label>
-
-        {/* Contenedor de resultados con position: fixed */}
-        {(searchSuggestions.length > 0 || (showSearchResults && searchResults.length > 0) || isSearching) && (
-          <div 
-            className="z-[9999]"
-            style={{
-              position: 'fixed',
-              top: menuPosition.top,
-              left: menuPosition.left,
-              width: menuPosition.width,
-              maxWidth: menuPosition.width,
-            }}
-          >
-            <div className="rounded-xl overflow-hidden"
-              style={{
-                background: isLight ? '#ffffff' : 'rgba(11, 22, 31, 0.98)',
-                border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(0,139,139,0.3)',
-                boxShadow: isLight
-                  ? '0 12px 40px rgba(0,0,0,0.10)'
-                  : '0 12px 40px rgba(0,0,0,0.7)',
-                backdropFilter: 'blur(16px)',
-                maxHeight: '280px',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {/* Loading */}
-              {isSearching && (
-                <div className="p-4 text-center">
-                  <Loader2 size={20} className="animate-spin mx-auto" style={{ color: '#008b8b' }} />
-                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Buscando indicadores...</p>
-                </div>
-              )}
-
-              {/* Sugerencias */}
-              {!isSearching && searchSuggestions.length > 0 && !showSearchResults && (
-                <div className="flex-1 overflow-y-auto max-h-[240px]">
-                  <div className="p-2">
-                    <div className="flex items-center justify-between px-3 py-1.5">
-                      <p className="text-[10px] tracking-widest uppercase font-medium"
-                        style={{ color: 'var(--text-muted)' }}>
-                        Sugerencias
-                      </p>
-                      <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                        Enter para buscar más
-                      </span>
-                    </div>
-                    {searchSuggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery(suggestion);
-                          setFormData(prev => ({ ...prev, indicador: suggestion }));
-                          setSearchSuggestions([]);
-                          setShowSearchResults(false);
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/5"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Resultados de búsqueda */}
-              {!isSearching && showSearchResults && (
-                <div className="flex-1 overflow-y-auto max-h-[240px]">
-                  {searchResults.length > 0 ? (
-                    <div className="p-2">
-                      <div className="flex items-center justify-between px-3 py-1.5">
-                        <p className="text-[10px] tracking-widest uppercase font-medium"
-                          style={{ color: 'var(--text-muted)' }}>
-                          Resultados encontrados ({searchResults.length})
-                        </p>
-                        <button
-                          onClick={() => {
-                            setShowSearchResults(false);
-                            setSearchResults([]);
-                          }}
-                          className="text-xs px-2 py-1 rounded-lg transition-colors"
-                          style={{ color: 'var(--text-muted)' }}
-                        >
-                          Cerrar
-                        </button>
-                      </div>
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          type="button"
-                          onClick={() => handleSelectResult(result)}
-                          className="w-full text-left px-3 py-2.5 rounded-lg transition-all hover:bg-white/5 group"
-                        >
-                          <div className="flex items-start gap-2">
-                            <div className="mt-0.5">
-                              <div className="w-1.5 h-1.5 rounded-full mt-1.5"
-                                style={{ background: 'linear-gradient(135deg, #2e5871, #008b8b)' }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                                {result.text}
-                              </p>
-                              {result.category && (
-                                <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                                  Categoría: {result.category}
-                                </p>
-                              )}
-                            </div>
-                            <CheckCircle2 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ color: '#008b8b' }} />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
+                <div className="rounded-xl overflow-hidden"
+                  style={{
+                    background: isLight ? '#ffffff' : 'rgba(11, 22, 31, 0.98)',
+                    border: isLight ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(0,139,139,0.3)',
+                    boxShadow: isLight
+                      ? '0 12px 40px rgba(0,0,0,0.10)'
+                      : '0 12px 40px rgba(0,0,0,0.7)',
+                    backdropFilter: 'blur(16px)',
+                    maxHeight: '280px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  {/* Loading */}
+                  {isSearching && (
                     <div className="p-4 text-center">
-                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        No se encontraron indicadores para "{searchQuery}"
-                      </p>
-                      <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                        Puedes seguir escribiendo tu propio indicador
-                      </p>
+                      <Loader2 size={20} className="animate-spin mx-auto" style={{ color: '#008b8b' }} />
+                      <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Buscando indicadores...</p>
+                    </div>
+                  )}
+
+                  {/* Sugerencias */}
+                  {!isSearching && searchSuggestions.length > 0 && !showSearchResults && (
+                    <div className="flex-1 overflow-y-auto max-h-[240px]">
+                      <div className="p-2">
+                        <div className="flex items-center justify-between px-3 py-1.5">
+                          <p className="text-[10px] tracking-widest uppercase font-medium"
+                            style={{ color: 'var(--text-muted)' }}>
+                            Sugerencias
+                          </p>
+                          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            Enter para buscar más
+                          </span>
+                        </div>
+                        {searchSuggestions.map((suggestion, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              setSearchQuery(suggestion);
+                              setFormData(prev => ({ ...prev, indicador: suggestion }));
+                              setSearchSuggestions([]);
+                              setShowSearchResults(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/5"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Resultados de búsqueda */}
+                  {!isSearching && showSearchResults && (
+                    <div className="flex-1 overflow-y-auto max-h-[240px]">
+                      {searchResults.length > 0 ? (
+                        <div className="p-2">
+                          <div className="flex items-center justify-between px-3 py-1.5">
+                            <p className="text-[10px] tracking-widest uppercase font-medium"
+                              style={{ color: 'var(--text-muted)' }}>
+                              Resultados encontrados ({searchResults.length})
+                            </p>
+                            <button
+                              onClick={() => {
+                                setShowSearchResults(false);
+                                setSearchResults([]);
+                              }}
+                              className="text-xs px-2 py-1 rounded-lg transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Cerrar
+                            </button>
+                          </div>
+                          {searchResults.map((result) => (
+                            <button
+                              key={result.id}
+                              type="button"
+                              onClick={() => handleSelectResult(result)}
+                              className="w-full text-left px-3 py-2.5 rounded-lg transition-all hover:bg-white/5 group"
+                            >
+                              <div className="flex items-start gap-2">
+                                <div className="mt-0.5">
+                                  <div className="w-1.5 h-1.5 rounded-full mt-1.5"
+                                    style={{ background: 'linear-gradient(135deg, #2e5871, #008b8b)' }} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                                    {result.text}
+                                  </p>
+                                  {result.category && (
+                                    <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                      Categoría: {result.category}
+                                    </p>
+                                  )}
+                                </div>
+                                <CheckCircle2 size={14} className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  style={{ color: '#008b8b' }} />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center">
+                          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            No se encontraron indicadores para "{searchQuery}"
+                          </p>
+                          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                            Puedes seguir escribiendo tu propio indicador
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      <TextField 
-        label="Línea base" 
-        value={formData.lineaBase}
-        placeholder="Ej. 62% (dato del periodo anterior)" 
-        onChange={v => setFormField('lineaBase', v)} 
-        cls={inputCls} 
-      />
-      <TextField 
-        label="Medición" 
-        value={formData.medicion}
-        placeholder="Ej. Semestral / Anual / Trimestral" 
-        onChange={v => setFormField('medicion', v)} 
-        cls={inputCls} 
-      />
-    </div>
-  </div>
-);
+          <TextField 
+            label="Línea base" 
+            value={formData.lineaBase}
+            placeholder="Ej. 62% (dato del periodo anterior)" 
+            onChange={v => setFormField('lineaBase', v)} 
+            cls={inputCls} 
+          />
+          <TextField 
+            label="Medición" 
+            value={formData.medicion}
+            placeholder="Ej. Semestral / Anual / Trimestral" 
+            onChange={v => setFormField('medicion', v)} 
+            cls={inputCls} 
+          />
+        </div>
+      </div>
+    );
 
     if (s === 'accion') return renderAIField(
       'accionMejora', '⚡', 'Acción de mejora',
