@@ -24,7 +24,7 @@ export function SearchBar({
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const searchTimeout = useRef<NodeJS.Timeout>();
+  const searchTimeout = useRef<number | null>(null); // 👈 Cambio: number | null en lugar de NodeJS.Timeout
 
   const isLight = theme === 'light';
 
@@ -65,13 +65,14 @@ export function SearchBar({
     
     if (searchTimeout.current) {
       clearTimeout(searchTimeout.current);
+      searchTimeout.current = null;
     }
 
     if (value.trim().length >= 2) {
       const sugg = await getSearchSuggestions(value);
       setSuggestions(sugg);
       
-      searchTimeout.current = setTimeout(() => {
+      searchTimeout.current = window.setTimeout(() => { // 👈 Cambio: window.setTimeout
         handleSearch(value);
       }, 500);
     } else {
@@ -153,7 +154,7 @@ export function SearchBar({
           <div className="p-2">
             <p className="text-[10px] tracking-widest uppercase font-medium px-3 py-1.5"
               style={{ color: 'var(--text-muted)' }}>
-              Sugerencias
+              Sugerencias — presiona Enter para buscar
             </p>
             {suggestions.map((suggestion, index) => (
               <button

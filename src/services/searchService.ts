@@ -1,44 +1,38 @@
 // services/searchService.ts
-
-const PROXY_URL = import.meta.env.VITE_PROXY_URL as string;
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
 export interface SearchResult {
   id: string;
   text: string;
   category?: string;
 }
 
+const PROXY_URL = import.meta.env.VITE_PROXY_URL as string;
+const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
 const headers = {
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${ANON_KEY}`,
 };
 
-export const searchIndicators = async (
-  query: string,
-  limit: number = 10
-): Promise<SearchResult[]> => {
+export const searchIndicators = async (query: string, limit: number = 10): Promise<SearchResult[]> => {
   if (!query || query.trim().length < 2) {
     return [];
   }
 
   try {
-    // Traer TODOS los indicadores (sin filtro)
-    const res = await fetch(PROXY_URL, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         operation: 'select',
         schema: 'pum',
         table: 'plan_um',
-        select: 'id, "Indicador"',
         match: {},
       }),
     });
 
-    const json = await res.json();
-
-    if (!res.ok || !json.success) {
+    const json = await response.json();
+    
+    if (!response.ok || !json.success) {
       console.error('Error en búsqueda:', json.error);
       return [];
     }
@@ -47,7 +41,6 @@ export const searchIndicators = async (
       return [];
     }
 
-    // Filtrar en el cliente (porque la Edge Function no soporta ilike)
     const searchTerm = query.trim().toLowerCase();
     const filtered = json.data
       .filter((item: any) => {
@@ -74,21 +67,20 @@ export const getSearchSuggestions = async (query: string): Promise<string[]> => 
   }
 
   try {
-    const res = await fetch(PROXY_URL, {
+    const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         operation: 'select',
         schema: 'pum',
         table: 'plan_um',
-        select: '"Indicador"',
         match: {},
       }),
     });
 
-    const json = await res.json();
-
-    if (!res.ok || !json.success || !json.data) {
+    const json = await response.json();
+    
+    if (!response.ok || !json.success || !json.data) {
       return [];
     }
 
